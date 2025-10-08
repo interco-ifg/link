@@ -42,9 +42,9 @@
         <!-- Theme switch -->
         <label class="inline-flex items-center gap-2">
           <span class="text-xs text-gray-500 dark:text-gray-400">Mode</span>
-          <!-- <button id="themeSwitch" class="relative inline-flex items-center h-7 w-14 bg-gray-200 rounded-full p-1 dark:bg-gray-700" aria-label="Toggle theme">
+          <button id="themeSwitch" class="relative inline-flex items-center h-7 w-14 bg-gray-200 rounded-full p-1 dark:bg-gray-700" aria-label="Toggle theme">
             <span id="themeKnob" class="inline-block w-5 h-5 bg-white rounded-full shadow transform transition"></span>
-          </button> -->
+          </button>
         </label>
       </div>
     </div>
@@ -328,7 +328,7 @@ async function loadAndRender(){
 
 /* theme handling */
 (function(){
-  const saved = 'dark';//localStorage.getItem('interco_theme') || 'light';
+  const saved = localStorage.getItem('interco_theme') || 'light';
   if(saved === 'dark'){ document.documentElement.classList.add('dark'); $('themeKnob').style.transform='translateX(22px)'; }
   $('themeSwitch').onclick = () => {
     const isDark = document.documentElement.classList.toggle('dark');
