@@ -1,22 +1,374 @@
-<!DOCTYPE html>
-<html lang="id">
+<!doctype html>
+<html lang="id" class="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Link Favorit Saya</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Interco — Pretty Bookmarks (Dark)</title>
+  <meta name="description" content="Bookmark manager cantik: dark mode, kategori, import/export, responsive. Siap untuk GitHub Pages." />
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind config (enable dark using 'class' and custom colors)
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            interco: {
+              900: '#0b2a43', // dark navy (brand primary - approximate)
+              700: '#0f466b',
+              500: '#0066a8', // accent blue
+            },
+            ifgred: '#ED1B24', // accent red (approx from IFG Life assets)
+            krem: '#f5e6d6',
+            'biru-muda': '#cbeffe'
+          },
+          keyframes: {
+            float: { '0%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-6px)' }, '100%': { transform: 'translateY(0)' } }
+          },
+          animation: {
+            float: 'float 3s ease-in-out infinite'
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    body { font-family: sans-serif; background: #f4f6f8; color: #333; text-align: center; }
-    .container { max-width: 600px; margin: 50px auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    a { display: block; margin: 10px 0; color: #0078d7; text-decoration: none; font-size: 18px; }
-    a:hover { text-decoration: underline; }
+    /* tiny helper for search highlight */
+    .highlight { background: linear-gradient(90deg, rgba(255,200,80,0.12), rgba(255,200,80,0.06)); border-left: 3px solid rgba(255,200,80,0.3); }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1>🌐 Link Favorit Saya</h1>
-    <a href="https://www.google.com">Google</a>
-    <a href="https://www.youtube.com">YouTube</a>
-    <a href="https://www.openai.com">OpenAI</a>
+<body class="bg-gradient-to-b from-slate-900 via-slate-950 to-black text-slate-100 min-h-screen transition-colors">
+  <div class="max-w-6xl mx-auto px-4 py-10">
+
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+      <div class="flex items-center gap-4">
+        <div id="logo" class="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-interco-700 to-interco-500 text-white font-bold text-xl shadow-lg animate-float">
+          IC
+        </div>
+        <div>
+          <h1 class="text-2xl font-extrabold">Interco — My Bookmarks</h1>
+          <p class="text-slate-400 text-sm">Dark aesthetic • Kategori • Import/Export • Responsive</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Brand color presets -->
+        <div class="flex items-center gap-2 bg-slate-800/60 rounded-xl px-3 py-2">
+          <button data-preset="ifg" class="preset w-6 h-6 rounded-full shadow" title="IFG brand" style="background:#0f466b"></button>
+          <button data-preset="deep" class="preset w-6 h-6 rounded-full shadow" title="Deep blue" style="background:#001f3f"></button>
+          <button data-preset="red" class="preset w-6 h-6 rounded-full shadow" title="Red accent" style="background:#ed1b24"></button>
+        </div>
+
+        <!-- Theme toggle -->
+        <button id="themeToggle" class="px-3 py-2 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 text-sm">Toggle Light</button>
+        <!-- Export + Import -->
+        <button id="downloadBtn" class="px-3 py-2 rounded-xl bg-interco-700 hover:bg-interco-500 text-sm">Export</button>
+        <label for="importFile" class="px-3 py-2 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 text-sm cursor-pointer">Import</label>
+        <input id="importFile" type="file" accept=".json,application/json" class="hidden" />
+      </div>
+    </header>
+
+    <!-- Controls -->
+    <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-6">
+      <div class="flex items-center gap-3 w-full sm:w-2/3 bg-slate-800/40 rounded-xl px-3 py-2 shadow transition">
+        <svg class="w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <input id="q" placeholder="Cari bookmark..." class="bg-transparent flex-1 outline-none text-sm placeholder:text-slate-500" />
+        <button id="clearSearch" class="text-slate-400">✕</button>
+      </div>
+
+      <div class="flex gap-2 items-center">
+        <select id="categoryFilter" class="bg-slate-800/40 rounded-xl px-3 py-2 text-sm">
+          <option value="">Semua Kategori</option>
+        </select>
+        <button id="addCategoryBtn" class="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm">+ Kategori</button>
+        <button id="addBtn" class="px-4 py-2 rounded-xl bg-interco-700 hover:bg-interco-500 text-sm font-semibold">+ Tambah Bookmark</button>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <main>
+      <section id="grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></section>
+      <div id="empty" class="text-center text-slate-500 hidden py-10">Belum ada bookmark — klik <strong>Tambah Bookmark</strong> untuk memulai.</div>
+    </main>
+
+    <footer class="mt-10 text-center text-slate-500 text-sm">
+      Simpan file sebagai <code>index.html</code>. Deploy ke GitHub Pages.
+    </footer>
   </div>
+
+  <!-- Modal: Add/Edit Bookmark -->
+  <div id="modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg p-6 border border-slate-800">
+      <h3 class="text-lg font-bold mb-3">Tambah Bookmark</h3>
+      <div class="grid gap-3">
+        <div>
+          <label class="text-sm text-slate-400">Nama</label>
+          <input id="bm-title" class="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-sm outline-none" placeholder="Contoh: YouTube" />
+        </div>
+        <div>
+          <label class="text-sm text-slate-400">URL</label>
+          <input id="bm-url" class="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-sm outline-none" placeholder="https://example.com" />
+        </div>
+        <div>
+          <label class="text-sm text-slate-400">Kategori</label>
+          <select id="bm-category" class="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-sm"></select>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button id="cancelBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Batal</button>
+          <button id="saveBtn" class="px-4 py-2 rounded-lg bg-interco-700 hover:bg-interco-500 text-sm font-semibold">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Category Create -->
+  <div id="catModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-5 border border-slate-800">
+      <h4 class="text-lg font-bold mb-3">Buat Kategori Baru</h4>
+      <input id="newCatName" class="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm mb-3" placeholder="Nama kategori, mis. Work, Social" />
+      <div class="flex justify-end gap-2">
+        <button id="catCancel" class="px-3 py-2 rounded-lg bg-slate-700 text-sm">Batal</button>
+        <button id="catSave" class="px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-sm font-semibold">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ========= Data storage & helpers ========= */
+const STORAGE_KEY = 'interco_bookmarks_v2';
+const CAT_KEY = 'interco_categories_v2';
+
+// defaults
+const DEFAULT_CATS = ['General'];
+const DEFAULT_BMS = [
+  {title:'Google', url:'https://www.google.com', category:'General'},
+  {title:'YouTube', url:'https://www.youtube.com', category:'General'}
+];
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+function loadBookmarks(){ try{ const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : DEFAULT_BMS.slice(); } catch { return DEFAULT_BMS.slice(); } }
+function saveBookmarks(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+
+function loadCats(){ try{ const r = localStorage.getItem(CAT_KEY); return r ? JSON.parse(r) : DEFAULT_CATS.slice(); } catch { return DEFAULT_CATS.slice(); } }
+function saveCats(arr){ localStorage.setItem(CAT_KEY, JSON.stringify(arr)); }
+
+function faviconFor(url){ try{ const u = new URL(url); return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`; } catch { return ''; } }
+
+/* ========= App state ========= */
+let bookmarks = loadBookmarks();
+let categories = loadCats();
+let editIndex = -1;
+
+/* ========= UI elements ========= */
+const grid = $('#grid');
+const emptyEl = $('#empty');
+const q = $('#q');
+const categoryFilter = $('#categoryFilter');
+
+function renderCategories() {
+  // filter dropdown
+  categoryFilter.innerHTML = '<option value="">Semua Kategori</option>';
+  categories.forEach(c => {
+    const o = document.createElement('option'); o.value = c; o.textContent = c;
+    categoryFilter.appendChild(o);
+  });
+  // modal select
+  const bmCat = $('#bm-category'); bmCat.innerHTML = '';
+  categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; bmCat.appendChild(o); });
+}
+
+function render(filter='') {
+  grid.innerHTML = '';
+  const qv = (filter||'').trim().toLowerCase();
+  const activeCat = categoryFilter.value;
+  const shown = bookmarks.filter(b => {
+    const matchText = (b.title + ' ' + b.url).toLowerCase().includes(qv);
+    const matchCat = activeCat ? (b.category === activeCat) : true;
+    return matchText && matchCat;
+  });
+
+  if (shown.length === 0) { emptyEl.classList.remove('hidden'); } else { emptyEl.classList.add('hidden'); }
+
+  shown.forEach((b, i) => {
+    const card = document.createElement('article');
+    card.className = 'group flex items-center gap-4 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-4 rounded-2xl shadow hover:scale-[1.01] transition-transform duration-200';
+
+    // favicon
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'w-14 h-14 rounded-lg bg-slate-800 flex items-center justify-center shrink-0';
+    const img = document.createElement('img'); img.src = faviconFor(b.url); img.alt='favicon'; img.className='w-10 h-10 rounded';
+    img.onerror = () => { img.style.display = 'none'; iconWrap.textContent = (b.title || '?').slice(0,1); iconWrap.classList.add('text-xl','font-bold'); }
+    iconWrap.appendChild(img);
+
+    // meta
+    const meta = document.createElement('div'); meta.className = 'flex-1 min-w-0';
+    const title = document.createElement('a'); title.href = b.url; title.target = '_blank'; title.rel='noopener'; title.className = 'block font-semibold truncate hover:underline'; title.textContent = b.title;
+    const url = document.createElement('div'); url.className = 'text-xs text-slate-400 truncate'; url.textContent = b.url;
+    const cat = document.createElement('div'); cat.className = 'inline-block mt-2 text-[12px] px-2 py-1 rounded-full bg-slate-700 text-slate-200'; cat.textContent = b.category || 'General';
+    meta.appendChild(title); meta.appendChild(url); meta.appendChild(cat);
+
+    // actions
+    const actions = document.createElement('div'); actions.className = 'flex gap-2 items-center';
+    const edit = document.createElement('button'); edit.className = 'px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm'; edit.textContent = '✎';
+    edit.onclick = (e) => { e.preventDefault(); openModal(i); };
+    const del = document.createElement('button'); del.className = 'px-3 py-2 rounded-lg bg-rose-700 hover:bg-rose-600 text-sm'; del.textContent = '🗑';
+    del.onclick = (e) => { e.preventDefault(); if (confirm('Hapus bookmark ini?')) { bookmarks.splice(i,1); saveBookmarks(bookmarks); render(q.value); }};
+
+    actions.appendChild(edit); actions.appendChild(del);
+
+    card.appendChild(iconWrap);
+    card.appendChild(meta);
+    card.appendChild(actions);
+
+    // subtle highlight if search matches title/url
+    if (qv) {
+      const txt = (b.title + ' ' + b.url).toLowerCase();
+      if (txt.includes(qv)) card.classList.add('highlight');
+    }
+
+    // enter animations
+    card.style.opacity = 0;
+    grid.appendChild(card);
+    requestAnimationFrame(() => { card.style.transition = 'opacity .28s ease, transform .28s ease'; card.style.opacity = 1; });
+
+  });
+}
+
+/* ========= Modal handlers ========= */
+const modal = $('#modal');
+const bmTitle = $('#bm-title');
+const bmUrl = $('#bm-url');
+const bmCategory = $('#bm-category');
+
+function openModal(i=-1) {
+  editIndex = i;
+  if (i >= 0) { const b = bookmarks[i]; bmTitle.value = b.title; bmUrl.value = b.url; bmCategory.value = b.category || categories[0]; }
+  else { bmTitle.value=''; bmUrl.value=''; bmCategory.value = categories[0] || 'General'; }
+  modal.classList.remove('hidden');
+}
+
+function closeModal() { modal.classList.add('hidden'); }
+
+/* ========= Category modal ========= */
+const catModal = $('#catModal');
+const newCatName = $('#newCatName');
+
+function openCatModal() { newCatName.value = ''; catModal.classList.remove('hidden'); }
+function closeCatModal() { catModal.classList.add('hidden'); }
+
+/* ========= Events ========= */
+$('#addBtn').onclick = () => openModal();
+$('#cancelBtn').onclick = () => closeModal();
+$('#saveBtn').onclick = () => {
+  const t = bmTitle.value.trim(); let u = bmUrl.value.trim(); const c = bmCategory.value || 'General';
+  if (!t || !u) { alert('Isi nama dan URL'); return; }
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  if (editIndex >= 0) { bookmarks[editIndex] = {title:t, url:u, category:c}; }
+  else { bookmarks.unshift({title:t, url:u, category:c}); }
+  saveBookmarks(bookmarks); render(q.value); closeModal();
+};
+
+// search
+q.addEventListener('input', () => render(q.value));
+$('#clearSearch').onclick = () => { q.value = ''; render(''); };
+
+// filter by category
+categoryFilter.onchange = () => render(q.value);
+
+// categories create
+$('#addCategoryBtn').onclick = () => openCatModal();
+$('#catCancel').onclick = () => closeCatModal();
+$('#catSave').onclick = () => {
+  const name = newCatName.value.trim();
+  if (!name) { alert('Isi nama kategori'); return; }
+  if (!categories.includes(name)) { categories.push(name); saveCats(categories); renderCategories(); } 
+  closeCatModal();
+};
+
+// export (download file)
+$('#downloadBtn').onclick = () => {
+  const data = JSON.stringify({bookmarks, categories}, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'interco-bookmarks.json'; a.click();
+};
+
+// import (file input)
+$('#importFile').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const txt = await f.text();
+    const parsed = JSON.parse(txt);
+    // allow both {bookmarks:[], categories:[]} or plain array
+    if (Array.isArray(parsed)) { bookmarks = parsed; }
+    else { if (parsed.bookmarks) bookmarks = parsed.bookmarks; if (parsed.categories) categories = Array.from(new Set([...categories, ...parsed.categories])); }
+    saveBookmarks(bookmarks); saveCats(categories); renderCategories(); render(q.value);
+    alert('Import berhasil.');
+  } catch (err) {
+    alert('Gagal import: file tidak valid.');
+  } finally { e.target.value = ''; }
+});
+
+// initial population for selects & UI
+function ensureDefaults() {
+  if (!Array.isArray(categories) || categories.length === 0) { categories = DEFAULT_CATS.slice(); saveCats(categories); }
+  if (!Array.isArray(bookmarks) || bookmarks.length === 0) { bookmarks = DEFAULT_BMS.slice(); saveBookmarks(bookmarks); }
+}
+ensureDefaults();
+renderCategories();
+render('');
+
+// close modals by clicking backdrop
+modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+catModal.addEventListener('click', (e) => { if (e.target === catModal) closeCatModal(); });
+
+/* ========= Theme & brand preset logic ========= */
+const themeToggle = $('#themeToggle');
+function setLightMode(enable) {
+  if (enable) document.documentElement.classList.remove('dark');
+  else document.documentElement.classList.add('dark');
+  localStorage.setItem('ic_theme', enable ? 'light' : 'dark');
+  themeToggle.textContent = enable ? 'Toggle Dark' : 'Toggle Light';
+}
+themeToggle.onclick = () => {
+  const isLight = !document.documentElement.classList.contains('dark');
+  setLightMode(isLight);
+}
+if (localStorage.getItem('ic_theme') === 'light') setLightMode(true);
+else setLightMode(false);
+
+// presets for brand color (applies to primary buttons / logo)
+$$('.preset').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const preset = btn.dataset.preset;
+    let primary = '#0f466b', accent = '#0066a8'; // default IFG-like
+    if (preset === 'deep') { primary = '#001f3f'; accent = '#003366'; }
+    if (preset === 'red') { primary = '#8b0d12'; accent = '#ed1b24'; }
+    // apply to CSS variables on root
+    document.documentElement.style.setProperty('--ic-primary', primary);
+    document.documentElement.style.setProperty('--ic-accent', accent);
+    // quick update some elements
+    document.querySelectorAll('.bg-interco-700').forEach(el => el.style.background = primary);
+    document.querySelectorAll('.bg-interco-500').forEach(el => el.style.background = accent);
+    document.querySelectorAll('#logo').forEach(el => el.style.background = `linear-gradient(135deg, ${primary}, ${accent})`);
+  });
+});
+// set initial brand css variables
+document.documentElement.style.setProperty('--ic-primary', '#0f466b');
+document.documentElement.style.setProperty('--ic-accent', '#0066a8');
+
+/* ========= Small UX niceties ========= */
+// double click empty area to reset sample (dev)
+document.addEventListener('dblclick', () => {
+  if (confirm('Reset bookmarks ke default contoh?')) {
+    bookmarks = DEFAULT_BMS.slice(); categories = DEFAULT_CATS.slice();
+    saveBookmarks(bookmarks); saveCats(categories); renderCategories(); render('');
+  }
+});
+</script>
 </body>
 </html>
