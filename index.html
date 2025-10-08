@@ -7,15 +7,9 @@
   <link rel="icon" href="https://www.ifg.id/images/ifg/icon-ifg.png" type="image/png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <style>
-    .fade-enter {opacity:0;transform:translateY(10px);}
-    .fade-enter-active {opacity:1;transform:translateY(0);transition:all .3s ease;}
-    .fade-exit {opacity:1;transform:translateY(0);}
-    .fade-exit-active {opacity:0;transform:translateY(10px);transition:all .3s ease;}
-  </style>
 </head>
 <body class="bg-gray-100 text-gray-900 dark:bg-[#181818] dark:text-gray-100 transition-colors duration-300">
-  <header class="sticky top-0 z-50 flex items-center justify-between bg-white/90 dark:bg-[#202020]/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 px-4 py-2">
+  <header class="sticky top-0 z-50 flex items-center justify-between bg-white/80 dark:bg-[#202020]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 px-4 py-2">
     <div class="flex items-center space-x-3">
       <img src="https://www.ifg.id/images/ifg/serong-red.png" alt="Interco Logo" class="h-10" />
       <h1 class="text-xl font-semibold text-[#E1261C]">Interco Bookmarks</h1>
@@ -23,29 +17,29 @@
     <div class="flex items-center space-x-4">
       <button id="connectGist" class="px-4 py-2 bg-[#E1261C] text-white rounded-lg hover:bg-[#FF4A3D] transition">Connect to Gist</button>
       <label class="relative inline-flex items-center cursor-pointer">
-        <input type="checkbox" id="themeToggle" class="sr-only peer">
-        <div class="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-[#E1261C] transition relative">
-          <div class="absolute top-[2px] left-[2px] bg-white h-5 w-5 rounded-full transition-transform peer-checked:translate-x-full"></div>
-        </div>
+        <input type="checkbox" id="themeToggle" class="sr-only peer" />
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-[#E1261C]"></div>
       </label>
     </div>
   </header>
 
   <main class="max-w-5xl mx-auto p-4">
-    <div id="categoryContainer"></div>
+    <section id="bookmarkList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"></section>
 
     <div class="mt-6 flex justify-center">
       <button id="addBookmarkBtn" class="px-6 py-3 bg-[#E1261C] text-white font-medium rounded-xl shadow hover:bg-[#FF4A3D] transition">Tambah Bookmark</button>
     </div>
   </main>
 
-  <!-- Modal Tambah/Edit Bookmark -->
+  <!-- Modal Tambah Bookmark -->
   <div id="bookmarkModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
     <div class="bg-white dark:bg-[#2A2A2A] rounded-xl shadow-lg w-96 p-6">
-      <h2 id="modalTitle" class="text-lg font-semibold mb-3">Tambah Bookmark</h2>
+      <h2 class="text-lg font-semibold mb-3">Tambah Bookmark</h2>
       <input id="bookmarkName" type="text" placeholder="Nama Bookmark" class="w-full mb-2 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600" />
       <input id="bookmarkURL" type="text" placeholder="URL (https://...)" class="w-full mb-2 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600" />
-      <select id="bookmarkCategory" class="w-full mb-3 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600"></select>
+      <select id="bookmarkCategory" class="w-full mb-3 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600">
+        <option value="default">Tanpa Kategori</option>
+      </select>
       <button id="iconPickerBtn" class="w-full mb-3 py-2 bg-gray-100 dark:bg-[#333] rounded hover:bg-gray-200 dark:hover:bg-[#444] transition">Pilih Icon</button>
       <div class="flex justify-end space-x-2">
         <button id="cancelBookmark" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-[#333]">Batal</button>
@@ -68,137 +62,105 @@
   <script>
     const gistId = 'a7846be2c114200a8612ca8a86411d16';
     const apiBase = `https://api.github.com/gists/${gistId}`;
-    let data = [];
+    let bookmarks = [];
     let selectedIcon = null;
-    let editing = null;
-    const icons = ["globe","briefcase","mail","phone","monitor","book","calendar","camera","chart","heart","link","code","settings","star","folder","database","map","music","shopping-bag","shield","layers","file-text","users","home"];
 
-    const el = id => document.getElementById(id);
+    const icons = ["globe", "briefcase", "mail", "phone", "monitor", "book", "calendar", "camera", "chart", "heart", "link", "code", "settings", "star", "folder", "database", "map", "music", "shopping-bag", "shield", "layers", "file-text", "users", "home"];
 
-    const loadData = async () => {
+    const loadBookmarks = async () => {
       try {
         const res = await fetch(apiBase);
-        const json = await res.json();
-        const file = json.files['interco-bookmarks.json'];
-        if (file && file.content) data = JSON.parse(file.content);
-        render();
-      } catch(e){ console.error('Gagal load Gist:', e); }
+        const data = await res.json();
+        const file = data.files['interco-bookmarks.json'];
+        if (file && file.content) bookmarks = JSON.parse(file.content);
+        renderBookmarks();
+      } catch (e) {
+        console.error('Gagal memuat data:', e);
+      }
     };
 
-    const saveData = async () => {
+    const saveBookmarks = async () => {
       const token = localStorage.getItem('github_token');
-      if (!token) return;
+      if (!token) return alert('Hubungkan GitHub terlebih dahulu untuk menyimpan.');
       await fetch(apiBase, {
         method: 'PATCH',
-        headers: {'Authorization': `token ${token}`, 'Content-Type':'application/json'},
-        body: JSON.stringify({ files: { 'interco-bookmarks.json': { content: JSON.stringify(data, null, 2) }}})
+        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: { 'interco-bookmarks.json': { content: JSON.stringify(bookmarks, null, 2) } } })
       });
     };
 
-    const getFavicon = url => {
-      try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; }
-      catch { return 'https://www.ifg.id/images/ifg/icon-ifg.png'; }
-    };
-
-    const render = () => {
-      const container = el('categoryContainer');
-      container.innerHTML = '';
-      data.forEach(cat => {
-        const section = document.createElement('section');
-        section.innerHTML = `
-          <h2 class='text-lg font-semibold mt-6 border-b pb-1 border-gray-300 dark:border-gray-600'>${cat.category}</h2>
-          <div class='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3' id='cat-${cat.category}'></div>`;
-        container.appendChild(section);
-        const grid = section.querySelector(`#cat-${cat.category}`);
-        cat.items.forEach(b => {
-          const card = document.createElement('div');
-          card.className = 'bg-white dark:bg-[#2A2A2A] rounded-xl shadow p-4 flex items-center justify-between transition hover:shadow-lg fade-enter';
-          card.innerHTML = `
-            <div class='flex items-center space-x-3'>
-              <img src='${b.icon ? '' : getFavicon(b.url)}' class='h-5 w-5'>
-              <i data-lucide='${b.icon || ''}'></i>
-              <a href='${b.url}' target='_blank' class='font-medium hover:text-[#E1261C]'>${b.name}</a>
-            </div>
-            ${localStorage.getItem('github_token') ? `
-              <div class='flex space-x-2'>
-                <button class='text-gray-400 hover:text-[#E1261C]' onclick='editBookmark("${cat.category}","${b.url}")'><i data-lucide=\"edit\"></i></button>
-                <button class='text-gray-400 hover:text-[#E1261C]' onclick='deleteBookmark("${cat.category}","${b.url}")'><i data-lucide=\"trash\"></i></button>
-              </div>` : ''
-            }`;
-          grid.appendChild(card);
-          setTimeout(()=>card.classList.add('fade-enter-active'),10);
-        });
-      });
+    const renderBookmarks = () => {
+      const list = document.getElementById('bookmarkList');
+      list.innerHTML = bookmarks.map(b => `
+        <div class='bg-white dark:bg-[#2A2A2A] rounded-xl shadow p-4 flex items-center justify-between transition hover:shadow-lg'>
+          <div class='flex items-center space-x-3'>
+            <i data-lucide="${b.icon || 'link'}"></i>
+            <a href='${b.url}' target='_blank' class='font-medium hover:text-[#E1261C]'>${b.name}</a>
+          </div>
+          <button onclick='deleteBookmark("${b.url}")' class='text-gray-400 hover:text-[#E1261C] transition'><i data-lucide="trash"></i></button>
+        </div>`).join('');
       lucide.createIcons();
     };
 
-    const addBookmark = () => {
-      const cat = el('bookmarkCategory').value;
-      const name = el('bookmarkName').value.trim();
-      const url = el('bookmarkURL').value.trim();
-      if(!name||!url)return alert('Lengkapi nama dan URL.');
-      const catObj = data.find(c=>c.category===cat);
-      const newB = { name, url, icon:selectedIcon };
-      if(editing){
-        const idx = catObj.items.findIndex(i=>i.url===editing);
-        catObj.items[idx]=newB;
-        editing=null;
-      }else catObj.items.push(newB);
-      saveData(); render();
-      el('bookmarkModal').classList.add('hidden');
+    const deleteBookmark = (url) => {
+      bookmarks = bookmarks.filter(b => b.url !== url);
+      saveBookmarks();
+      renderBookmarks();
     };
 
-    const deleteBookmark = (cat,url)=>{
-      const c=data.find(c=>c.category===cat);
-      c.items=c.items.filter(i=>i.url!==url);
-      saveData(); render();
+    document.getElementById('addBookmarkBtn').onclick = () => document.getElementById('bookmarkModal').classList.remove('hidden');
+    document.getElementById('cancelBookmark').onclick = () => document.getElementById('bookmarkModal').classList.add('hidden');
+
+    document.getElementById('saveBookmark').onclick = () => {
+      const name = document.getElementById('bookmarkName').value.trim();
+      const url = document.getElementById('bookmarkURL').value.trim();
+      if (!name || !url) return alert('Nama dan URL wajib diisi.');
+      bookmarks.push({ name, url, icon: selectedIcon });
+      saveBookmarks();
+      renderBookmarks();
+      document.getElementById('bookmarkModal').classList.add('hidden');
     };
 
-    const editBookmark = (cat,url)=>{
-      const c=data.find(c=>c.category===cat);
-      const b=c.items.find(i=>i.url===url);
-      el('modalTitle').innerText='Edit Bookmark';
-      el('bookmarkName').value=b.name;
-      el('bookmarkURL').value=b.url;
-      el('bookmarkCategory').value=cat;
-      editing=url;
-      el('bookmarkModal').classList.remove('hidden');
-    };
-
-    el('addBookmarkBtn').onclick = ()=>{
-      if(!localStorage.getItem('github_token'))return alert('Hubungkan GitHub dulu.');
-      el('modalTitle').innerText='Tambah Bookmark';
-      el('bookmarkName').value='';el('bookmarkURL').value='';editing=null;
-      el('bookmarkModal').classList.remove('hidden');
-    };
-    el('cancelBookmark').onclick=()=>el('bookmarkModal').classList.add('hidden');
-    el('saveBookmark').onclick=addBookmark;
-
-    el('iconPickerBtn').onclick=()=>{
-      const grid=el('iconGrid');
-      grid.innerHTML=icons.map(i=>`<button data-icon='${i}' class='p-2 rounded hover:bg-gray-200 dark:hover:bg-[#333]'><i data-lucide='${i}'></i></button>`).join('');
+    document.getElementById('iconPickerBtn').onclick = () => {
+      const modal = document.getElementById('iconPickerModal');
+      const grid = document.getElementById('iconGrid');
+      grid.innerHTML = icons.map(i => `<button data-icon='${i}' class='p-2 rounded hover:bg-gray-200 dark:hover:bg-[#333]'><i data-lucide='${i}'></i></button>`).join('');
       lucide.createIcons();
-      el('iconPickerModal').classList.remove('hidden');
-      grid.querySelectorAll('button').forEach(b=>{
-        b.onclick=()=>{selectedIcon=b.dataset.icon;el('iconPickerModal').classList.add('hidden');};
+      modal.classList.remove('hidden');
+      grid.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => {
+          selectedIcon = btn.getAttribute('data-icon');
+          modal.classList.add('hidden');
+        };
       });
     };
-    el('closeIconPicker').onclick=()=>el('iconPickerModal').classList.add('hidden');
+    document.getElementById('closeIconPicker').onclick = () => document.getElementById('iconPickerModal').classList.add('hidden');
 
-    el('connectGist').onclick=()=>{
-      const token=prompt('Masukkan GitHub Personal Access Token (scope: gist):');
-      if(token){localStorage.setItem('github_token',token);alert('Terhubung ke GitHub!');render();}
+    document.getElementById('connectGist').onclick = () => {
+      const token = prompt('Masukkan GitHub Personal Access Token (scope: gist):');
+      if (token) {
+        localStorage.setItem('github_token', token);
+        alert('Terhubung ke GitHub! Sekarang Anda dapat menyimpan perubahan.');
+      }
     };
 
-    const themeToggle=el('themeToggle');
-    const saved=localStorage.getItem('theme');
-    if(saved==='dark'){document.documentElement.classList.add('dark');themeToggle.checked=true;}
-    themeToggle.addEventListener('change',e=>{
-      if(e.target.checked){document.documentElement.classList.add('dark');localStorage.setItem('theme','dark');}
-      else{document.documentElement.classList.remove('dark');localStorage.setItem('theme','light');}
+    const themeToggle = document.getElementById('themeToggle');
+    const currentTheme = localStorage.getItem('theme');
+    if (currentTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      themeToggle.checked = true;
+    }
+    themeToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
     });
 
-    loadData();
+    loadBookmarks();
   </script>
 </body>
 </html>
