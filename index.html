@@ -1,374 +1,553 @@
 <!doctype html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Interco — Pretty Bookmarks (Dark)</title>
-  <meta name="description" content="Bookmark manager cantik: dark mode, kategori, import/export, responsive. Siap untuk GitHub Pages." />
-  <!-- Tailwind CDN -->
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Interco — Corporate Bookmarks (Gist Sync)</title>
+  <meta name="description" content="Interco bookmark manager — sync to public GitHub Gist. IFG corporate style, Lucide icons, dark mode toggle."/>
+  <!-- Inter font + Tailwind -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
   <script>
-    // Tailwind config (enable dark using 'class' and custom colors)
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            interco: {
-              900: '#0b2a43', // dark navy (brand primary - approximate)
-              700: '#0f466b',
-              500: '#0066a8', // accent blue
-            },
-            ifgred: '#ED1B24', // accent red (approx from IFG Life assets)
-            krem: '#f5e6d6',
-            'biru-muda': '#cbeffe'
+            ifg: { DEFAULT: '#E1261C', light: '#FF4A3D', soft: '#FDEBEA' },
+            bg: '#F5F5F5', border: '#E0E0E0', textPrimary: '#212121', textMuted: '#616161'
           },
-          keyframes: {
-            float: { '0%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-6px)' }, '100%': { transform: 'translateY(0)' } }
-          },
-          animation: {
-            float: 'float 3s ease-in-out infinite'
-          }
+          borderRadius: { 'xl': '16px' },
+          boxShadow: { 'soft': '0 8px 24px rgba(18,24,30,0.06)' },
         }
       }
     }
   </script>
   <style>
-    /* tiny helper for search highlight */
-    .highlight { background: linear-gradient(90deg, rgba(255,200,80,0.12), rgba(255,200,80,0.06)); border-left: 3px solid rgba(255,200,80,0.3); }
+    :root { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+    .match-highlight { background: linear-gradient(90deg, rgba(225,38,28,0.08), rgba(225,38,28,0.04)); border-left: 3px solid rgba(225,38,28,0.12); }
+    .lucide-btn:hover { background: rgba(0,0,0,0.03); }
   </style>
 </head>
-<body class="bg-gradient-to-b from-slate-900 via-slate-950 to-black text-slate-100 min-h-screen transition-colors">
-  <div class="max-w-6xl mx-auto px-4 py-10">
-
+<body class="bg-bg text-textPrimary min-h-screen antialiased">
+  <div class="max-w-6xl mx-auto p-6 lg:p-10">
     <!-- Header -->
-    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+    <header class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
       <div class="flex items-center gap-4">
-        <div id="logo" class="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-interco-700 to-interco-500 text-white font-bold text-xl shadow-lg animate-float">
+        <div id="logo" class="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-ifg to-ifg-light text-white font-extrabold text-lg shadow-soft">
           IC
         </div>
         <div>
-          <h1 class="text-2xl font-extrabold">Interco — My Bookmarks</h1>
-          <p class="text-slate-400 text-sm">Dark aesthetic • Kategori • Import/Export • Responsive</p>
+          <h1 class="text-2xl lg:text-3xl font-extrabold">Interco — Bookmark Manager</h1>
+          <p class="text-textMuted text-sm mt-0.5">IFG corporate palette • Public Gist sync • Lucide icons</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <!-- Brand color presets -->
-        <div class="flex items-center gap-2 bg-slate-800/60 rounded-xl px-3 py-2">
-          <button data-preset="ifg" class="preset w-6 h-6 rounded-full shadow" title="IFG brand" style="background:#0f466b"></button>
-          <button data-preset="deep" class="preset w-6 h-6 rounded-full shadow" title="Deep blue" style="background:#001f3f"></button>
-          <button data-preset="red" class="preset w-6 h-6 rounded-full shadow" title="Red accent" style="background:#ed1b24"></button>
+      <div class="flex items-center gap-3 w-full lg:w-auto">
+        <!-- Theme toggle (switch style) -->
+        <div class="flex items-center gap-2 bg-white border border-border rounded-full px-3 py-1 shadow-soft">
+          <span class="text-sm text-textMuted mr-2">Mode</span>
+          <button id="themeSwitch" class="relative w-14 h-7 bg-slate-200 rounded-full p-1">
+            <span id="themeKnob" class="absolute left-1 top-1 w-5 h-5 rounded-full bg-white shadow"></span>
+          </button>
         </div>
 
-        <!-- Theme toggle -->
-        <button id="themeToggle" class="px-3 py-2 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 text-sm">Toggle Light</button>
-        <!-- Export + Import -->
-        <button id="downloadBtn" class="px-3 py-2 rounded-xl bg-interco-700 hover:bg-interco-500 text-sm">Export</button>
-        <label for="importFile" class="px-3 py-2 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 text-sm cursor-pointer">Import</label>
-        <input id="importFile" type="file" accept=".json,application/json" class="hidden" />
+        <!-- Gist connection -->
+        <div class="flex items-center gap-2">
+          <button id="connectBtn" class="bg-white border border-border rounded-xl px-3 py-2 text-sm hover:shadow-md">Connect (token)</button>
+          <button id="disconnectBtn" class="hidden bg-white border border-border rounded-xl px-3 py-2 text-sm hover:shadow-md">Disconnect</button>
+        </div>
+
+        <!-- Gist id display -->
+        <div class="text-xs text-textMuted px-3 py-2 rounded-xl bg-white border border-border">
+          Gist: <strong id="gistIdDisplay">a7846be2c114200a8612ca8a86411d16</strong>
+        </div>
       </div>
     </header>
 
     <!-- Controls -->
-    <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-6">
-      <div class="flex items-center gap-3 w-full sm:w-2/3 bg-slate-800/40 rounded-xl px-3 py-2 shadow transition">
-        <svg class="w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <input id="q" placeholder="Cari bookmark..." class="bg-transparent flex-1 outline-none text-sm placeholder:text-slate-500" />
-        <button id="clearSearch" class="text-slate-400">✕</button>
+    <section class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-6">
+      <div class="flex items-center gap-3 bg-white border border-border rounded-xl px-3 py-2 shadow-soft w-full lg:w-2/3">
+        <svg class="w-5 h-5 text-textMuted" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <input id="q" type="search" placeholder="Cari bookmark..." class="bg-transparent outline-none text-sm w-72 lg:w-96" />
+        <button id="clearSearch" title="Bersihkan" class="text-textMuted">✕</button>
       </div>
 
-      <div class="flex gap-2 items-center">
-        <select id="categoryFilter" class="bg-slate-800/40 rounded-xl px-3 py-2 text-sm">
+      <div class="flex gap-2 ml-auto">
+        <label for="importFile" class="flex items-center gap-2 bg-white border border-border rounded-xl px-3 py-2 text-sm cursor-pointer hover:shadow-md">
+          Import
+        </label>
+        <input id="importFile" type="file" accept="application/json" class="hidden" />
+        <button id="exportBtn" class="bg-white border border-border rounded-xl px-3 py-2 text-sm hover:shadow-md">Export</button>
+        <button id="accentToggle" class="bg-ifg text-white rounded-xl px-3 py-2 text-sm hover:bg-ifg-light">Accent</button>
+      </div>
+    </section>
+
+    <!-- Controls 2 -->
+    <section class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-6">
+      <div class="flex items-center gap-3 bg-white border border-border rounded-xl px-3 py-2 shadow-soft w-full lg:w-2/3">
+        <select id="categoryFilter" class="bg-transparent outline-none text-sm text-textPrimary">
           <option value="">Semua Kategori</option>
         </select>
-        <button id="addCategoryBtn" class="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm">+ Kategori</button>
-        <button id="addBtn" class="px-4 py-2 rounded-xl bg-interco-700 hover:bg-interco-500 text-sm font-semibold">+ Tambah Bookmark</button>
+        <button id="addCategoryBtn" class="ml-auto bg-white border border-border text-sm rounded-lg px-3 py-2 hover:shadow-md">+ Kategori</button>
       </div>
-    </div>
+
+      <div class="flex gap-3 ml-auto">
+        <button id="clearAllBtn" class="bg-white border border-border rounded-xl px-4 py-2 text-sm hover:shadow-md">Clear All</button>
+        <button id="addBtn" class="bg-ifg text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-ifg-light">+ Tambah Bookmark</button>
+      </div>
+    </section>
 
     <!-- Grid -->
     <main>
-      <section id="grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></section>
-      <div id="empty" class="text-center text-slate-500 hidden py-10">Belum ada bookmark — klik <strong>Tambah Bookmark</strong> untuk memulai.</div>
+      <div id="grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+      <div id="empty" class="hidden mt-8 p-8 bg-white border border-border rounded-xl text-center text-textMuted">Belum ada bookmark — klik <strong>Tambah Bookmark</strong> untuk memulai.</div>
     </main>
 
-    <footer class="mt-10 text-center text-slate-500 text-sm">
-      Simpan file sebagai <code>index.html</code>. Deploy ke GitHub Pages.
-    </footer>
+    <footer class="mt-8 text-sm text-textMuted text-center">Simpan sebagai <code>index.html</code> & deploy ke GitHub Pages. Public Gist ID: <code>a7846be2c114200a8612ca8a86411d16</code></footer>
   </div>
 
   <!-- Modal: Add/Edit Bookmark -->
-  <div id="modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4">
-    <div class="bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg p-6 border border-slate-800">
-      <h3 class="text-lg font-bold mb-3">Tambah Bookmark</h3>
+  <div id="modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl w-full max-w-lg p-6 shadow-xl border border-border">
+      <h3 class="text-lg font-semibold mb-3">Tambah / Edit Bookmark</h3>
       <div class="grid gap-3">
         <div>
-          <label class="text-sm text-slate-400">Nama</label>
-          <input id="bm-title" class="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-sm outline-none" placeholder="Contoh: YouTube" />
+          <label class="text-sm text-textMuted">Nama</label>
+          <input id="bm-title" class="mt-1 w-full rounded-lg border border-border px-3 py-2" placeholder="Contoh: YouTube" />
         </div>
         <div>
-          <label class="text-sm text-slate-400">URL</label>
-          <input id="bm-url" class="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-sm outline-none" placeholder="https://example.com" />
+          <label class="text-sm text-textMuted">URL</label>
+          <input id="bm-url" class="mt-1 w-full rounded-lg border border-border px-3 py-2" placeholder="https://example.com" />
         </div>
+
         <div>
-          <label class="text-sm text-slate-400">Kategori</label>
-          <select id="bm-category" class="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-sm"></select>
+          <label class="text-sm text-textMuted mb-1">Pilih Icon</label>
+          <div class="flex gap-2 items-center">
+            <button id="pickIconBtn" class="px-3 py-2 rounded-lg border border-border text-sm">Pilih Icon</button>
+            <div id="selectedIconPreview" class="ml-2"></div>
+            <button id="clearIconBtn" class="ml-2 px-2 py-1 rounded border border-border text-xs">Hapus Icon</button>
+          </div>
         </div>
-        <div class="flex justify-end gap-2">
-          <button id="cancelBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Batal</button>
-          <button id="saveBtn" class="px-4 py-2 rounded-lg bg-interco-700 hover:bg-interco-500 text-sm font-semibold">Simpan</button>
+
+        <div>
+          <label class="text-sm text-textMuted">Kategori</label>
+          <select id="bm-category" class="mt-1 w-full rounded-lg border border-border px-3 py-2"></select>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-2">
+          <button id="cancelBtn" class="bg-white border border-border rounded-lg px-4 py-2 text-sm hover:shadow-md">Batal</button>
+          <button id="saveBtn" class="bg-ifg text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-ifg-light">Simpan</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Category Create -->
-  <div id="catModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4">
-    <div class="bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-5 border border-slate-800">
-      <h4 class="text-lg font-bold mb-3">Buat Kategori Baru</h4>
-      <input id="newCatName" class="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm mb-3" placeholder="Nama kategori, mis. Work, Social" />
+  <!-- Icon Picker Modal (24 icons) -->
+  <div id="iconPicker" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-60">
+    <div class="bg-white rounded-xl w-full max-w-2xl p-5 shadow-xl border border-border">
+      <h4 class="font-semibold mb-3">Pilih Icon</h4>
+      <div id="iconGrid" class="grid grid-cols-6 gap-3">
+        <!-- icons populated by JS -->
+      </div>
+      <div class="flex justify-end mt-4">
+        <button id="closeIconPicker" class="px-3 py-2 rounded-lg border border-border">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Modal -->
+  <div id="catModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-40">
+    <div class="bg-white rounded-xl w-full max-w-md p-5 shadow-xl border border-border">
+      <h4 class="text-lg font-semibold mb-3">Buat Kategori Baru</h4>
+      <input id="newCatName" class="w-full rounded-lg border border-border px-3 py-2 mb-3" placeholder="Nama kategori, mis. Work, Social" />
       <div class="flex justify-end gap-2">
-        <button id="catCancel" class="px-3 py-2 rounded-lg bg-slate-700 text-sm">Batal</button>
-        <button id="catSave" class="px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-sm font-semibold">Simpan</button>
+        <button id="catCancel" class="bg-white border border-border rounded-lg px-3 py-2 text-sm">Batal</button>
+        <button id="catSave" class="bg-ifg text-white rounded-lg px-3 py-2 text-sm font-semibold">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token Dialog -->
+  <div id="tokenModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-70">
+    <div class="bg-white rounded-xl w-full max-w-md p-5 shadow-xl border border-border">
+      <h4 class="text-lg font-semibold mb-3">Masukkan GitHub Personal Access Token (scope: gist)</h4>
+      <input id="tokenInput" class="w-full rounded-lg border border-border px-3 py-2 mb-3" placeholder="ghp_xxx..." />
+      <p class="text-xs text-textMuted mb-3">Token disimpan lokal di browser-mu. Jangan bagikan token ini ke orang lain.</p>
+      <div class="flex justify-end gap-2">
+        <button id="tokenCancel" class="bg-white border border-border rounded-lg px-3 py-2">Batal</button>
+        <button id="tokenSave" class="bg-ifg text-white rounded-lg px-3 py-2 font-semibold">Simpan & Aktifkan</button>
       </div>
     </div>
   </div>
 
 <script>
-/* ========= Data storage & helpers ========= */
-const STORAGE_KEY = 'interco_bookmarks_v2';
-const CAT_KEY = 'interco_categories_v2';
-
-// defaults
+/* ========== Configuration ========== */
+const GIST_ID = 'a7846be2c114200a8612ca8a86411d16'; // from your input
+const GIST_FILENAME = 'interco-bookmarks.json'; // filename inside gist
+const LOCAL_KEY = 'interco_bookmarks_ifg_gist_public_v1';
+const TOKEN_KEY = 'interco_gist_token_v1';
+const THEME_KEY = 'interco_theme_v1';
 const DEFAULT_CATS = ['General'];
 const DEFAULT_BMS = [
-  {title:'Google', url:'https://www.google.com', category:'General'},
-  {title:'YouTube', url:'https://www.youtube.com', category:'General'}
+  {title:'Google', url:'https://www.google.com', category:'General', icon: ''},
+  {title:'YouTube', url:'https://www.youtube.com', category:'General', icon: ''}
 ];
 
+/* ========= State & refs ========= */
+let bookmarks = [];
+let categories = [];
+let editIndex = -1;
+let token = localStorage.getItem(TOKEN_KEY) || '';
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
-function loadBookmarks(){ try{ const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : DEFAULT_BMS.slice(); } catch { return DEFAULT_BMS.slice(); } }
-function saveBookmarks(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+/* ========= Lucide icons list (24 popular) ========= */
+const ICONS = [
+  'globe', 'briefcase', 'mail', 'phone', 'monitor', 'book', 'calendar', 'camera',
+  'chart-bar', 'heart', 'link', 'code', 'settings', 'star', 'folder', 'database',
+  'map', 'music', 'shopping-bag', 'shield', 'layers', 'file-text', 'users', 'home'
+];
 
-function loadCats(){ try{ const r = localStorage.getItem(CAT_KEY); return r ? JSON.parse(r) : DEFAULT_CATS.slice(); } catch { return DEFAULT_CATS.slice(); } }
-function saveCats(arr){ localStorage.setItem(CAT_KEY, JSON.stringify(arr)); }
+/* ========= Utilities ========= */
+function saveLocal(){
+  const payload = {bookmarks, categories};
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(payload));
+}
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch{ return null; }
+}
+function faviconFor(url){ try{ const u=new URL(url); return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`; }catch{ return ''; } }
 
-function faviconFor(url){ try{ const u = new URL(url); return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`; } catch { return ''; } }
-
-/* ========= App state ========= */
-let bookmarks = loadBookmarks();
-let categories = loadCats();
-let editIndex = -1;
-
-/* ========= UI elements ========= */
-const grid = $('#grid');
-const emptyEl = $('#empty');
-const q = $('#q');
-const categoryFilter = $('#categoryFilter');
-
-function renderCategories() {
-  // filter dropdown
-  categoryFilter.innerHTML = '<option value="">Semua Kategori</option>';
-  categories.forEach(c => {
-    const o = document.createElement('option'); o.value = c; o.textContent = c;
-    categoryFilter.appendChild(o);
-  });
-  // modal select
-  const bmCat = $('#bm-category'); bmCat.innerHTML = '';
-  categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; bmCat.appendChild(o); });
+/* ========= Gist operations ========= */
+async function fetchGist(){
+  // GET gist content (public allowed)
+  const url = `https://api.github.com/gists/${GIST_ID}`;
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('Gist fetch failed: ' + res.status);
+    const data = await res.json();
+    const files = data.files || {};
+    if(files[GIST_FILENAME] && files[GIST_FILENAME].content){
+      const parsed = JSON.parse(files[GIST_FILENAME].content);
+      return parsed;
+    } else {
+      // gist exists but file not found -> create default content by writing (requires token)
+      return null;
+    }
+  }catch(err){
+    console.error('fetchGist err', err);
+    return null;
+  }
 }
 
-function render(filter='') {
+async function updateGistRemote(payload){
+  // payload: { bookmarks:[], categories:[] }
+  if(!token) {
+    console.warn('No token; cannot update gist.');
+    return {ok:false, reason:'no_token'};
+  }
+  const url = `https://api.github.com/gists/${GIST_ID}`;
+  const body = {
+    files: {
+      [GIST_FILENAME]: { content: JSON.stringify(payload, null, 2) }
+    }
+  };
+  try{
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'token ' + token,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok){ const txt = await res.text(); console.error('updateGist failed', res.status, txt); return {ok:false, reason:txt}; }
+    return {ok:true};
+  }catch(err){ console.error('updateGist err', err); return {ok:false, reason:err.message}; }
+}
+
+/* ========= Render functions ========= */
+const grid = $('#grid'), emptyEl = $('#empty'), q = $('#q'), categoryFilter = $('#categoryFilter');
+
+function renderCategories(){
+  categoryFilter.innerHTML = '<option value="">Semua Kategori</option>';
+  categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; categoryFilter.appendChild(o); });
+  const bmCat = $('#bm-category'); if(bmCat){ bmCat.innerHTML = ''; categories.forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=c; bmCat.appendChild(o); }); }
+}
+
+function renderGrid(filter=''){
   grid.innerHTML = '';
   const qv = (filter||'').trim().toLowerCase();
   const activeCat = categoryFilter.value;
-  const shown = bookmarks.filter(b => {
-    const matchText = (b.title + ' ' + b.url).toLowerCase().includes(qv);
-    const matchCat = activeCat ? (b.category === activeCat) : true;
-    return matchText && matchCat;
+  const shown = bookmarks.filter(b=>{
+    const inCat = activeCat ? b.category === activeCat : true;
+    const inText = (b.title + ' ' + b.url).toLowerCase().includes(qv);
+    return inCat && inText;
   });
 
-  if (shown.length === 0) { emptyEl.classList.remove('hidden'); } else { emptyEl.classList.add('hidden'); }
+  if(shown.length === 0) { emptyEl.classList.remove('hidden'); } else { emptyEl.classList.add('hidden'); }
 
-  shown.forEach((b, i) => {
+  shown.forEach((b,i)=>{
     const card = document.createElement('article');
-    card.className = 'group flex items-center gap-4 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-4 rounded-2xl shadow hover:scale-[1.01] transition-transform duration-200';
+    card.className = 'group relative flex items-start gap-4 bg-white border border-border rounded-xl p-4 shadow-soft transition-transform duration-200 hover:-translate-y-1';
 
-    // favicon
-    const iconWrap = document.createElement('div');
-    iconWrap.className = 'w-14 h-14 rounded-lg bg-slate-800 flex items-center justify-center shrink-0';
-    const img = document.createElement('img'); img.src = faviconFor(b.url); img.alt='favicon'; img.className='w-10 h-10 rounded';
-    img.onerror = () => { img.style.display = 'none'; iconWrap.textContent = (b.title || '?').slice(0,1); iconWrap.classList.add('text-xl','font-bold'); }
-    iconWrap.appendChild(img);
-
-    // meta
-    const meta = document.createElement('div'); meta.className = 'flex-1 min-w-0';
-    const title = document.createElement('a'); title.href = b.url; title.target = '_blank'; title.rel='noopener'; title.className = 'block font-semibold truncate hover:underline'; title.textContent = b.title;
-    const url = document.createElement('div'); url.className = 'text-xs text-slate-400 truncate'; url.textContent = b.url;
-    const cat = document.createElement('div'); cat.className = 'inline-block mt-2 text-[12px] px-2 py-1 rounded-full bg-slate-700 text-slate-200'; cat.textContent = b.category || 'General';
-    meta.appendChild(title); meta.appendChild(url); meta.appendChild(cat);
-
-    // actions
-    const actions = document.createElement('div'); actions.className = 'flex gap-2 items-center';
-    const edit = document.createElement('button'); edit.className = 'px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm'; edit.textContent = '✎';
-    edit.onclick = (e) => { e.preventDefault(); openModal(i); };
-    const del = document.createElement('button'); del.className = 'px-3 py-2 rounded-lg bg-rose-700 hover:bg-rose-600 text-sm'; del.textContent = '🗑';
-    del.onclick = (e) => { e.preventDefault(); if (confirm('Hapus bookmark ini?')) { bookmarks.splice(i,1); saveBookmarks(bookmarks); render(q.value); }};
-
-    actions.appendChild(edit); actions.appendChild(del);
-
-    card.appendChild(iconWrap);
-    card.appendChild(meta);
-    card.appendChild(actions);
-
-    // subtle highlight if search matches title/url
-    if (qv) {
-      const txt = (b.title + ' ' + b.url).toLowerCase();
-      if (txt.includes(qv)) card.classList.add('highlight');
+    // icon area
+    const iconWrap = document.createElement('div'); iconWrap.className = 'w-14 h-14 rounded-lg bg-bg flex items-center justify-center shrink-0 overflow-hidden';
+    if(b.icon){
+      const ico = document.createElement('i'); ico.setAttribute('data-lucide', b.icon); ico.className = 'lucide-icon w-10 h-10 text-ifg';
+      iconWrap.appendChild(ico);
+      // render lucide
+    } else {
+      const img = document.createElement('img'); img.src = faviconFor(b.url); img.alt='favicon'; img.className='w-10 h-10';
+      img.onerror = ()=>{ img.style.display='none'; iconWrap.textContent = (b.title||'?').slice(0,1); iconWrap.classList.add('text-xl','font-semibold'); }
+      iconWrap.appendChild(img);
     }
 
-    // enter animations
-    card.style.opacity = 0;
+    const meta = document.createElement('div'); meta.className = 'flex-1 min-w-0';
+    const title = document.createElement('a'); title.href = b.url; title.target = '_blank'; title.rel='noopener noreferrer'; title.className='block font-semibold truncate text-textPrimary'; title.textContent = b.title;
+    const urlEl = document.createElement('div'); urlEl.className = 'text-sm text-textMuted truncate'; urlEl.textContent = b.url;
+    const cat = document.createElement('div'); cat.className = 'inline-block mt-2 text-xs px-2 py-1 rounded-full bg-bg text-textMuted border border-border'; cat.textContent = b.category || 'General';
+    meta.appendChild(title); meta.appendChild(urlEl); meta.appendChild(cat);
+
+    const actions = document.createElement('div'); actions.className = 'flex flex-col gap-2 items-end';
+    const btnRow = document.createElement('div'); btnRow.className = 'flex gap-2';
+    const openBtn = document.createElement('a'); openBtn.className='px-3 py-2 rounded-lg bg-ifg text-white text-sm hover:bg-ifg-light'; openBtn.href=b.url; openBtn.target='_blank'; openBtn.textContent='Open';
+    const edit = document.createElement('button'); edit.className='px-3 py-2 rounded-lg border border-border text-sm'; edit.textContent='Edit';
+    const del = document.createElement('button'); del.className='px-3 py-2 rounded-lg border border-border text-sm text-rose-600'; del.textContent='Hapus';
+
+    edit.onclick = (e)=>{ e.preventDefault(); openModal(bookmarks.indexOf(b)); };
+    del.onclick = (e)=>{ e.preventDefault(); if(confirm('Hapus bookmark ini?')){ fadeOutAndRemove(card, ()=>{ bookmarks.splice(bookmarks.indexOf(b),1); saveAndMaybeSync(); renderGrid(q.value); }); } };
+
+    btnRow.appendChild(openBtn); btnRow.appendChild(edit); btnRow.appendChild(del);
+    actions.appendChild(btnRow);
+
+    card.appendChild(iconWrap); card.appendChild(meta); card.appendChild(actions);
+    if(qv && (b.title + ' ' + b.url).toLowerCase().includes(qv)) card.classList.add('match-highlight');
+
     grid.appendChild(card);
-    requestAnimationFrame(() => { card.style.transition = 'opacity .28s ease, transform .28s ease'; card.style.opacity = 1; });
-
   });
+
+  // render lucide icons
+  try{ lucide.createIcons(); }catch(e){}
 }
 
-/* ========= Modal handlers ========= */
-const modal = $('#modal');
-const bmTitle = $('#bm-title');
-const bmUrl = $('#bm-url');
-const bmCategory = $('#bm-category');
+/* ========= Modal logic ========= */
+const modal = $('#modal'), bmTitle = $('#bm-title'), bmUrl = $('#bm-url'), bmCategory = $('#bm-category'), pickIconBtn = $('#pickIconBtn'), selectedIconPreview = $('#selectedIconPreview'), clearIconBtn = $('#clearIconBtn');
+const iconPicker = $('#iconPicker'), iconGrid = $('#iconGrid'), closeIconPicker = $('#closeIconPicker');
 
-function openModal(i=-1) {
+function openModal(i=-1){
   editIndex = i;
-  if (i >= 0) { const b = bookmarks[i]; bmTitle.value = b.title; bmUrl.value = b.url; bmCategory.value = b.category || categories[0]; }
-  else { bmTitle.value=''; bmUrl.value=''; bmCategory.value = categories[0] || 'General'; }
+  if(i>=0){
+    const b = bookmarks[i];
+    bmTitle.value = b.title; bmUrl.value = b.url; bmCategory.value = b.category || categories[0]; setSelectedIcon(b.icon || '');
+  } else {
+    bmTitle.value=''; bmUrl.value=''; bmCategory.value = categories[0] || 'General'; setSelectedIcon('');
+  }
   modal.classList.remove('hidden');
+  bmTitle.focus();
+}
+function closeModal(){ modal.classList.add('hidden'); }
+
+pickIconBtn.onclick = ()=>{ openIconPicker(); };
+clearIconBtn.onclick = ()=>{ setSelectedIcon(''); };
+
+function setSelectedIcon(name){
+  selectedIconPreview.innerHTML = '';
+  selectedIconPreview.dataset.icon = name || '';
+  if(name){
+    const el = document.createElement('i'); el.setAttribute('data-lucide', name); el.className='lucide-icon w-6 h-6 text-ifg';
+    selectedIconPreview.appendChild(el); try{ lucide.createIcons(); }catch(e){}
+  }
 }
 
-function closeModal() { modal.classList.add('hidden'); }
+/* Icon picker population */
+function populateIconGrid(){
+  iconGrid.innerHTML = '';
+  ICONS.forEach(ic=>{
+    const b = document.createElement('button');
+    b.className = 'p-3 rounded-md border border-border lucide-btn flex items-center justify-center';
+    b.title = ic;
+    b.dataset.icon = ic;
+    const iEl = document.createElement('i'); iEl.setAttribute('data-lucide', ic); iEl.className='lucide-icon w-6 h-6';
+    b.appendChild(iEl);
+    b.onclick = ()=>{ setSelectedIcon(ic); iconPicker.classList.add('hidden'); };
+    iconGrid.appendChild(b);
+  });
+  try{ lucide.createIcons(); }catch(e){}
+}
 
-/* ========= Category modal ========= */
-const catModal = $('#catModal');
-const newCatName = $('#newCatName');
+closeIconPicker.onclick = ()=> iconPicker.classList.add('hidden');
+function openIconPicker(){ iconPicker.classList.remove('hidden'); }
 
-function openCatModal() { newCatName.value = ''; catModal.classList.remove('hidden'); }
-function closeCatModal() { catModal.classList.add('hidden'); }
+/* Save bookmark */
+$('#saveBtn').onclick = ()=> {
+  const t = bmTitle.value.trim(); let u = bmUrl.value.trim(); const c = bmCategory.value || 'General'; const icon = selectedIconPreview.dataset.icon || '';
+  if(!t || !u){ alert('Isi nama dan URL'); return; }
+  if(!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  if(editIndex >= 0){
+    bookmarks[editIndex] = { ...bookmarks[editIndex], title: t, url: u, category: c, icon };
+  } else {
+    bookmarks.unshift({ title: t, url: u, category: c, icon });
+  }
+  saveAndMaybeSync();
+  renderCategories(); renderGrid('');
+  closeModal();
+};
+$('#cancelBtn').onclick = ()=> closeModal();
 
-/* ========= Events ========= */
-$('#addBtn').onclick = () => openModal();
-$('#cancelBtn').onclick = () => closeModal();
-$('#saveBtn').onclick = () => {
-  const t = bmTitle.value.trim(); let u = bmUrl.value.trim(); const c = bmCategory.value || 'General';
-  if (!t || !u) { alert('Isi nama dan URL'); return; }
-  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
-  if (editIndex >= 0) { bookmarks[editIndex] = {title:t, url:u, category:c}; }
-  else { bookmarks.unshift({title:t, url:u, category:c}); }
-  saveBookmarks(bookmarks); render(q.value); closeModal();
+/* Category modal */
+$('#addCategoryBtn').onclick = ()=> { $('#newCatName').value=''; $('#catModal').classList.remove('hidden'); $('#newCatName').focus(); };
+$('#catCancel').onclick = ()=> $('#catModal').classList.add('hidden');
+$('#catSave').onclick = ()=>{
+  const name = $('#newCatName').value.trim();
+  if(!name) { alert('Isi nama kategori'); return; }
+  if(!categories.includes(name)){ categories.push(name); saveAndMaybeSync(); renderCategories(); }
+  $('#catModal').classList.add('hidden');
 };
 
-// search
-q.addEventListener('input', () => render(q.value));
-$('#clearSearch').onclick = () => { q.value = ''; render(''); };
-
-// filter by category
-categoryFilter.onchange = () => render(q.value);
-
-// categories create
-$('#addCategoryBtn').onclick = () => openCatModal();
-$('#catCancel').onclick = () => closeCatModal();
-$('#catSave').onclick = () => {
-  const name = newCatName.value.trim();
-  if (!name) { alert('Isi nama kategori'); return; }
-  if (!categories.includes(name)) { categories.push(name); saveCats(categories); renderCategories(); } 
-  closeCatModal();
-};
-
-// export (download file)
-$('#downloadBtn').onclick = () => {
-  const data = JSON.stringify({bookmarks, categories}, null, 2);
-  const blob = new Blob([data], {type:'application/json'});
+/* Import / Export */
+$('#exportBtn').onclick = ()=>{
+  const payload = { bookmarks, categories };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'interco-bookmarks.json'; a.click();
 };
-
-// import (file input)
-$('#importFile').addEventListener('change', async (e) => {
+$('#importFile').addEventListener('change', async (e)=>{
   const f = e.target.files[0];
-  if (!f) return;
-  try {
+  if(!f) return;
+  try{
     const txt = await f.text();
     const parsed = JSON.parse(txt);
-    // allow both {bookmarks:[], categories:[]} or plain array
-    if (Array.isArray(parsed)) { bookmarks = parsed; }
-    else { if (parsed.bookmarks) bookmarks = parsed.bookmarks; if (parsed.categories) categories = Array.from(new Set([...categories, ...parsed.categories])); }
-    saveBookmarks(bookmarks); saveCats(categories); renderCategories(); render(q.value);
+    if(Array.isArray(parsed)) bookmarks = parsed;
+    else { if(parsed.bookmarks) bookmarks = parsed.bookmarks; if(parsed.categories) categories = Array.from(new Set([...categories, ...parsed.categories])); }
+    saveAndMaybeSync();
+    renderCategories(); renderGrid('');
     alert('Import berhasil.');
-  } catch (err) {
-    alert('Gagal import: file tidak valid.');
-  } finally { e.target.value = ''; }
+  }catch(err){ alert('Gagal import: file tidak valid.'); }
+  e.target.value = '';
 });
 
-// initial population for selects & UI
-function ensureDefaults() {
-  if (!Array.isArray(categories) || categories.length === 0) { categories = DEFAULT_CATS.slice(); saveCats(categories); }
-  if (!Array.isArray(bookmarks) || bookmarks.length === 0) { bookmarks = DEFAULT_BMS.slice(); saveBookmarks(bookmarks); }
-}
-ensureDefaults();
-renderCategories();
-render('');
+/* Search & filter */
+q.oninput = ()=> renderGrid(q.value);
+$('#clearSearch').onclick = ()=> { q.value=''; renderGrid(''); };
+categoryFilter.onchange = ()=> renderGrid(q.value);
 
-// close modals by clicking backdrop
-modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-catModal.addEventListener('click', (e) => { if (e.target === catModal) closeCatModal(); });
-
-/* ========= Theme & brand preset logic ========= */
-const themeToggle = $('#themeToggle');
-function setLightMode(enable) {
-  if (enable) document.documentElement.classList.remove('dark');
-  else document.documentElement.classList.add('dark');
-  localStorage.setItem('ic_theme', enable ? 'light' : 'dark');
-  themeToggle.textContent = enable ? 'Toggle Dark' : 'Toggle Light';
-}
-themeToggle.onclick = () => {
-  const isLight = !document.documentElement.classList.contains('dark');
-  setLightMode(isLight);
-}
-if (localStorage.getItem('ic_theme') === 'light') setLightMode(true);
-else setLightMode(false);
-
-// presets for brand color (applies to primary buttons / logo)
-$$('.preset').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    const preset = btn.dataset.preset;
-    let primary = '#0f466b', accent = '#0066a8'; // default IFG-like
-    if (preset === 'deep') { primary = '#001f3f'; accent = '#003366'; }
-    if (preset === 'red') { primary = '#8b0d12'; accent = '#ed1b24'; }
-    // apply to CSS variables on root
-    document.documentElement.style.setProperty('--ic-primary', primary);
-    document.documentElement.style.setProperty('--ic-accent', accent);
-    // quick update some elements
-    document.querySelectorAll('.bg-interco-700').forEach(el => el.style.background = primary);
-    document.querySelectorAll('.bg-interco-500').forEach(el => el.style.background = accent);
-    document.querySelectorAll('#logo').forEach(el => el.style.background = `linear-gradient(135deg, ${primary}, ${accent})`);
-  });
-});
-// set initial brand css variables
-document.documentElement.style.setProperty('--ic-primary', '#0f466b');
-document.documentElement.style.setProperty('--ic-accent', '#0066a8');
-
-/* ========= Small UX niceties ========= */
-// double click empty area to reset sample (dev)
-document.addEventListener('dblclick', () => {
-  if (confirm('Reset bookmarks ke default contoh?')) {
-    bookmarks = DEFAULT_BMS.slice(); categories = DEFAULT_CATS.slice();
-    saveBookmarks(bookmarks); saveCats(categories); renderCategories(); render('');
+/* Clear all */
+$('#clearAllBtn').onclick = ()=> {
+  if(confirm('Hapus semua bookmark?')){
+    bookmarks = []; saveAndMaybeSync(); renderGrid('');
   }
-});
+};
+
+/* fade animation */
+function fadeOutAndRemove(el, cb){
+  el.style.transition = 'opacity .28s ease, transform .28s ease';
+  el.style.opacity = 0; el.style.transform = 'translateY(6px)';
+  setTimeout(()=>{ cb && cb(); }, 300);
+}
+
+/* ========= Save & Sync logic ========= */
+async function saveAndMaybeSync(){
+  saveLocal();
+  // if user has token, try to update gist
+  if(token){
+    const payload = { bookmarks, categories };
+    const res = await updateGistRemote(payload);
+    if(!res.ok){
+      console.warn('Remote update failed:', res.reason);
+      // keep local copy; user can try reconnect
+    } else {
+      console.log('Gist updated');
+    }
+  }
+}
+
+/* ========= Theme toggle ========= */
+const themeSwitch = $('#themeSwitch'), themeKnob = $('#themeKnob');
+function applyTheme(isLight){
+  if(isLight){
+    document.documentElement.style.background = ''; // defaults
+    document.documentElement.dataset.theme = 'light';
+    // knob left
+    themeKnob.style.transform = 'translateX(0)';
+  } else {
+    document.documentElement.dataset.theme = 'dark';
+    // apply dark styles (override classes)
+    themeKnob.style.transform = 'translateX(28px)';
+  }
+  localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark');
+}
+themeSwitch.onclick = ()=>{
+  const cur = localStorage.getItem(THEME_KEY) || 'light';
+  const isLight = cur === 'light';
+  applyTheme(!isLight);
+};
+// initialize theme
+(function(){
+  const t = localStorage.getItem(THEME_KEY) || 'light';
+  applyTheme(t === 'light');
+})();
+
+/* ========= Gist connect UI ========= */
+$('#connectBtn').onclick = ()=> { $('#tokenInput').value = ''; $('#tokenModal').classList.remove('hidden'); };
+$('#tokenCancel').onclick = ()=> $('#tokenModal').classList.add('hidden');
+$('#tokenSave').onclick = ()=>{
+  const v = $('#tokenInput').value.trim();
+  if(!v){ alert('Masukkan token'); return; }
+  token = v;
+  localStorage.setItem(TOKEN_KEY, token);
+  $('#tokenModal').classList.add('hidden');
+  $('#connectBtn').classList.add('hidden'); $('#disconnectBtn').classList.remove('hidden');
+  alert('Token disimpan lokal. Halaman akan mencoba menyimpan perubahan ke Gist.');
+};
+$('#disconnectBtn').onclick = ()=>{
+  if(confirm('Hapus token dari browser?')){ token=''; localStorage.removeItem(TOKEN_KEY); $('#disconnectBtn').classList.add('hidden'); $('#connectBtn').classList.remove('hidden'); alert('Token dihapus lokal.'); }
+};
+
+/* ========= Initialization: load from Gist public or fallback to local defaults ========= */
+async function initialize(){
+  // try fetch gist
+  const gistData = await fetchGist();
+  if(gistData && gistData.bookmarks){
+    bookmarks = gistData.bookmarks;
+    categories = gistData.categories || DEFAULT_CATS.slice();
+    console.log('Loaded from gist');
+  } else {
+    // fallback to local storage
+    const local = loadLocal();
+    if(local && local.bookmarks){
+      bookmarks = local.bookmarks; categories = local.categories || DEFAULT_CATS.slice();
+      console.log('Loaded from local storage');
+    } else {
+      // fallback defaults
+      bookmarks = DEFAULT_BMS.slice(); categories = DEFAULT_CATS.slice();
+      // attempt to save to gist only if token present
+      await saveAndMaybeSync();
+    }
+  }
+
+  // UI: show connect state if token exists
+  if(token){ $('#connectBtn').classList.add('hidden'); $('#disconnectBtn').classList.remove('hidden'); }
+
+  populateIconGrid();
+  renderCategories();
+  renderGrid('');
+}
+
+/* run init */
+initialize();
+
+/* close modals on backdrop click */
+$('#modal').addEventListener('click', e => { if(e.target === $('#modal')) closeModal(); });
+$('#iconPicker').addEventListener('click', e => { if(e.target === $('#iconPicker')) iconPicker.classList.add('hidden'); });
+$('#catModal').addEventListener('click', e => { if(e.target === $('#catModal')) $('#catModal').classList.add('hidden'); });
+
 </script>
 </body>
 </html>
