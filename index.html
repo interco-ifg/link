@@ -1,166 +1,346 @@
-<!DOCTYPE html>
-<html lang="id" class="light">
+<!doctype html>
+<html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Interco Corporate Bookmark Manager</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Interco — Bookmark Manager (Gist Sync)</title>
+  <meta name="description" content="Interco bookmark manager — sync to public GitHub Gist. IFG corporate style."/>
   <link rel="icon" href="https://www.ifg.id/images/ifg/icon-ifg.png" type="image/png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+    .fade-enter{opacity:0; transform:translateY(8px)}
+    .fade-enter-active{opacity:1; transform:translateY(0); transition:all .28s ease}
+    .card-icon{width:36px;height:36px;display:inline-grid;place-items:center}
+  </style>
 </head>
-<body class="bg-gray-100 text-gray-900 dark:bg-[#181818] dark:text-gray-100 transition-colors duration-300">
-  <header class="sticky top-0 z-50 flex items-center justify-between bg-white/80 dark:bg-[#202020]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 px-4 py-2">
-    <div class="flex items-center space-x-3">
-      <img src="https://www.ifg.id/images/ifg/serong-red.png" alt="Interco Logo" class="h-10" />
-      <h1 class="text-xl font-semibold text-[#E1261C]">Interco Bookmarks</h1>
-    </div>
-    <div class="flex items-center space-x-4">
-      <button id="connectGist" class="px-4 py-2 bg-[#E1261C] text-white rounded-lg hover:bg-[#FF4A3D] transition">Connect to Gist</button>
-      <label class="relative inline-flex items-center cursor-pointer">
-        <input type="checkbox" id="themeToggle" class="sr-only peer" />
-        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-[#E1261C]"></div>
-      </label>
+<body class="bg-gray-100 text-gray-900 dark:bg-[#121212] dark:text-gray-100 transition-colors duration-300">
+  <!-- Sticky header with IFG logo -->
+  <header class="sticky top-0 z-50 bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <img src="https://www.ifg.id/images/ifg/serong-red.png" alt="Interco Logo" class="h-10"/>
+        <div>
+          <h1 class="text-lg font-semibold text-[#E1261C]">Interco Bookmarks</h1>
+          <p class="text-xs text-gray-500 dark:text-gray-400">IFG corporate • public Gist sync</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Connect / Disconnect -->
+        <button id="connectBtn" class="px-3 py-2 rounded-xl bg-[#E1261C] text-white text-sm hover:bg-[#ff4a3d]">Connect (token)</button>
+        <button id="disconnectBtn" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm hidden">Disconnect</button>
+
+        <!-- Theme switch -->
+        <label class="inline-flex items-center gap-2">
+          <span class="text-xs text-gray-500 dark:text-gray-400">Mode</span>
+          <button id="themeSwitch" class="relative inline-flex items-center h-7 w-14 bg-gray-200 rounded-full p-1 dark:bg-gray-700" aria-label="Toggle theme">
+            <span id="themeKnob" class="inline-block w-5 h-5 bg-white rounded-full shadow transform transition"></span>
+          </button>
+        </label>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-5xl mx-auto p-4">
-    <section id="bookmarkList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"></section>
+  <main class="max-w-6xl mx-auto p-4">
+    <!-- Controls -->
+    <section class="flex flex-col lg:flex-row gap-3 justify-between items-start mb-4">
+      <div class="flex gap-3 w-full lg:w-2/3 items-center">
+        <div class="flex items-center bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm w-full">
+          <svg class="w-5 h-5 text-gray-400 mr-2" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <input id="searchInput" class="bg-transparent outline-none w-full text-sm" placeholder="Cari bookmark..." />
+          <button id="clearSearchBtn" class="text-gray-400 ml-2">✕</button>
+        </div>
+      </div>
 
-    <div class="mt-6 flex justify-center">
-      <button id="addBookmarkBtn" class="px-6 py-3 bg-[#E1261C] text-white font-medium rounded-xl shadow hover:bg-[#FF4A3D] transition">Tambah Bookmark</button>
-    </div>
+      <div class="flex gap-2 items-center">
+        <button id="addCatBtn" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm hidden">+ Kategori</button>
+        <button id="addBtn" class="px-4 py-2 rounded-xl bg-[#E1261C] text-white text-sm hidden">+ Tambah Bookmark</button>
+      </div>
+    </section>
+
+    <!-- Category container (heading style) -->
+    <div id="categoriesRoot" class="space-y-6"></div>
+
+    <div id="emptyNotice" class="hidden text-center text-gray-500 mt-10">Belum ada bookmark.</div>
   </main>
 
-  <!-- Modal Tambah Bookmark -->
-  <div id="bookmarkModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-    <div class="bg-white dark:bg-[#2A2A2A] rounded-xl shadow-lg w-96 p-6">
-      <h2 class="text-lg font-semibold mb-3">Tambah Bookmark</h2>
-      <input id="bookmarkName" type="text" placeholder="Nama Bookmark" class="w-full mb-2 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600" />
-      <input id="bookmarkURL" type="text" placeholder="URL (https://...)" class="w-full mb-2 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600" />
-      <select id="bookmarkCategory" class="w-full mb-3 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600">
-        <option value="default">Tanpa Kategori</option>
-      </select>
-      <button id="iconPickerBtn" class="w-full mb-3 py-2 bg-gray-100 dark:bg-[#333] rounded hover:bg-gray-200 dark:hover:bg-[#444] transition">Pilih Icon</button>
-      <div class="flex justify-end space-x-2">
-        <button id="cancelBookmark" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-[#333]">Batal</button>
-        <button id="saveBookmark" class="px-4 py-2 bg-[#E1261C] text-white rounded hover:bg-[#FF4A3D]">Simpan</button>
+  <!-- Modals -->
+  <!-- Bookmark modal -->
+  <div id="bookmarkModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white dark:bg-[#111827] rounded-xl w-full max-w-lg p-5">
+      <h3 id="modalTitle" class="text-lg font-semibold mb-3">Tambah Bookmark</h3>
+      <div class="grid gap-3">
+        <input id="bmName" class="border border-gray-200 rounded px-3 py-2 bg-white dark:bg-[#0b1220]" placeholder="Nama" />
+        <input id="bmURL" class="border border-gray-200 rounded px-3 py-2 bg-white dark:bg-[#0b1220]" placeholder="https://..." />
+        <select id="bmCategory" class="border border-gray-200 rounded px-3 py-2 bg-white dark:bg-[#0b1220]"></select>
+        <div class="flex items-center gap-2">
+          <button id="pickIconBtn" class="px-3 py-2 border rounded text-sm">Pilih Icon</button>
+          <div id="iconPreview" class="card-icon"></div>
+          <button id="clearIconBtn" class="px-2 py-1 border rounded text-xs">Hapus Icon</button>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button id="cancelBtn" class="px-3 py-2 border rounded">Batal</button>
+          <button id="saveBtn" class="px-3 py-2 bg-[#E1261C] text-white rounded">Simpan</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal Icon Picker -->
-  <div id="iconPickerModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-    <div class="bg-white dark:bg-[#2A2A2A] rounded-xl shadow-lg w-96 p-6 max-h-[80vh] overflow-y-auto">
-      <h2 class="text-lg font-semibold mb-3">Pilih Icon</h2>
-      <div id="iconGrid" class="grid grid-cols-6 gap-3 text-gray-700 dark:text-gray-100"></div>
-      <div class="flex justify-end mt-4">
-        <button id="closeIconPicker" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-[#333]">Tutup</button>
-      </div>
+  <!-- Icon picker modal -->
+  <div id="iconModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white dark:bg-[#111827] rounded-xl w-full max-w-2xl p-5">
+      <h4 class="font-semibold mb-3">Pilih Icon</h4>
+      <div id="iconGrid" class="grid grid-cols-6 gap-3"></div>
+      <div class="flex justify-end mt-4"><button id="closeIconModal" class="px-3 py-2 border rounded">Tutup</button></div>
     </div>
   </div>
 
-  <script>
-    const gistId = 'a7846be2c114200a8612ca8a86411d16';
-    const apiBase = `https://api.github.com/gists/${gistId}`;
-    let bookmarks = [];
-    let selectedIcon = null;
+  <!-- Category modal -->
+  <div id="catModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white dark:bg-[#111827] rounded-xl w-full max-w-md p-5">
+      <h4 class="font-semibold mb-3">Buat Kategori</h4>
+      <input id="newCatName" class="border border-gray-200 rounded px-3 py-2 mb-3" placeholder="Nama kategori"/>
+      <div class="flex justify-end gap-2"><button id="cancelCat" class="px-3 py-2 border rounded">Batal</button><button id="saveCat" class="px-3 py-2 bg-[#E1261C] text-white rounded">Simpan</button></div>
+    </div>
+  </div>
 
-    const icons = ["globe", "briefcase", "mail", "phone", "monitor", "book", "calendar", "camera", "chart", "heart", "link", "code", "settings", "star", "folder", "database", "map", "music", "shopping-bag", "shield", "layers", "file-text", "users", "home"];
+<script>
+/* -------- CONFIG -------- */
+const GIST_ID = 'a7846be2c114200a8612ca8a86411d16'; // ganti jika mau pakai gist baru
+const GIST_FILENAME = 'interco-bookmarks.json';
+const LOCAL_KEY = 'interco_bookmarks_cache_v2';
+const TOKEN_KEY = 'interco_gist_token_v2';
+const ICONS = ['globe','briefcase','mail','phone','monitor','book','calendar','camera','chart','heart','link','code','settings','star','folder','database','map','music','shopping-bag','shield','layers','file-text','users','home'];
 
-    const loadBookmarks = async () => {
-      try {
-        const res = await fetch(apiBase);
-        const data = await res.json();
-        const file = data.files['interco-bookmarks.json'];
-        if (file && file.content) bookmarks = JSON.parse(file.content);
-        renderBookmarks();
-      } catch (e) {
-        console.error('Gagal memuat data:', e);
-      }
-    };
+/* -------- STATE -------- */
+let store = { categories: [] }; // final structure: { categories: [{ category: 'X', items: [ {name,url,icon} ] }, ... ] }
+let editing = null; // {catName, itemIndex}
+let selectedIcon = '';
+const $ = id => document.getElementById(id);
 
-    const saveBookmarks = async () => {
-      const token = localStorage.getItem('github_token');
-      if (!token) return alert('Hubungkan GitHub terlebih dahulu untuk menyimpan.');
-      await fetch(apiBase, {
-        method: 'PATCH',
-        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: { 'interco-bookmarks.json': { content: JSON.stringify(bookmarks, null, 2) } } })
-      });
-    };
+/* -------- HELPERS -------- */
+function isConnected(){ return !!localStorage.getItem(TOKEN_KEY); }
+function apiUrl(){ return `https://api.github.com/gists/${GIST_ID}`; }
+function favicon(url){ try{ return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; }catch{ return 'https://www.ifg.id/images/ifg/icon-ifg.png'; } }
+async function fetchGist(){ try{ const r = await fetch(apiUrl()); if(!r.ok) throw new Error('Gist fetch failed'); const j = await r.json(); if(j.files && j.files[GIST_FILENAME] && j.files[GIST_FILENAME].content){ return JSON.parse(j.files[GIST_FILENAME].content); } return null; }catch(e){ console.warn(e); return null; } }
+async function patchGist(payload){ const token = localStorage.getItem(TOKEN_KEY); if(!token) return {ok:false,reason:'no_token'}; try{ const r = await fetch(apiUrl(), { method:'PATCH', headers:{ Authorization: 'token '+token, Accept:'application/vnd.github.v3+json', 'Content-Type':'application/json' }, body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(payload, null, 2) } } }) }); if(!r.ok){ const txt = await r.text(); return {ok:false, reason: txt}; } return {ok:true}; }catch(e){ return {ok:false, reason:e.message}; } }
 
-    const renderBookmarks = () => {
-      const list = document.getElementById('bookmarkList');
-      list.innerHTML = bookmarks.map(b => `
-        <div class='bg-white dark:bg-[#2A2A2A] rounded-xl shadow p-4 flex items-center justify-between transition hover:shadow-lg'>
-          <div class='flex items-center space-x-3'>
-            <i data-lucide="${b.icon || 'link'}"></i>
-            <a href='${b.url}' target='_blank' class='font-medium hover:text-[#E1261C]'>${b.name}</a>
-          </div>
-          <button onclick='deleteBookmark("${b.url}")' class='text-gray-400 hover:text-[#E1261C] transition'><i data-lucide="trash"></i></button>
-        </div>`).join('');
-      lucide.createIcons();
-    };
+/* -------- RENDER UI -------- */
+function setButtonsForConnection(){
+  const connected = isConnected();
+  $('addBtn').classList.toggle('hidden', !connected);
+  $('addCatBtn').classList.toggle('hidden', !connected);
+  $('disconnectBtn').classList.toggle('hidden', !connected);
+  $('connectBtn').classList.toggle('hidden', connected);
+}
 
-    const deleteBookmark = (url) => {
-      bookmarks = bookmarks.filter(b => b.url !== url);
-      saveBookmarks();
-      renderBookmarks();
-    };
+function renderCategories(){
+  const root = document.getElementById('categoriesRoot');
+  root.innerHTML = '';
+  if(!store.categories || store.categories.length === 0){ $('emptyNotice').classList.remove('hidden'); return; } else $('emptyNotice').classList.add('hidden');
 
-    document.getElementById('addBookmarkBtn').onclick = () => document.getElementById('bookmarkModal').classList.remove('hidden');
-    document.getElementById('cancelBookmark').onclick = () => document.getElementById('bookmarkModal').classList.add('hidden');
-
-    document.getElementById('saveBookmark').onclick = () => {
-      const name = document.getElementById('bookmarkName').value.trim();
-      const url = document.getElementById('bookmarkURL').value.trim();
-      if (!name || !url) return alert('Nama dan URL wajib diisi.');
-      bookmarks.push({ name, url, icon: selectedIcon });
-      saveBookmarks();
-      renderBookmarks();
-      document.getElementById('bookmarkModal').classList.add('hidden');
-    };
-
-    document.getElementById('iconPickerBtn').onclick = () => {
-      const modal = document.getElementById('iconPickerModal');
-      const grid = document.getElementById('iconGrid');
-      grid.innerHTML = icons.map(i => `<button data-icon='${i}' class='p-2 rounded hover:bg-gray-200 dark:hover:bg-[#333]'><i data-lucide='${i}'></i></button>`).join('');
-      lucide.createIcons();
-      modal.classList.remove('hidden');
-      grid.querySelectorAll('button').forEach(btn => {
-        btn.onclick = () => {
-          selectedIcon = btn.getAttribute('data-icon');
-          modal.classList.add('hidden');
-        };
-      });
-    };
-    document.getElementById('closeIconPicker').onclick = () => document.getElementById('iconPickerModal').classList.add('hidden');
-
-    document.getElementById('connectGist').onclick = () => {
-      const token = prompt('Masukkan GitHub Personal Access Token (scope: gist):');
-      if (token) {
-        localStorage.setItem('github_token', token);
-        alert('Terhubung ke GitHub! Sekarang Anda dapat menyimpan perubahan.');
-      }
-    };
-
-    const themeToggle = document.getElementById('themeToggle');
-    const currentTheme = localStorage.getItem('theme');
-    if (currentTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      themeToggle.checked = true;
-    }
-    themeToggle.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-      }
+  store.categories.forEach(cat => {
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h2 class="text-lg font-semibold mt-6 border-b pb-1 border-gray-300 dark:border-gray-600">${cat.category}</h2>`;
+    const grid = document.createElement('div'); grid.className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3';
+    cat.items.forEach((b, idx) => {
+      const card = document.createElement('article');
+      card.className = 'bg-white dark:bg-[#1b1b1b] rounded-xl shadow p-4 flex items-center justify-between transition transform hover:-translate-y-1';
+      const iconHTML = b.icon ? `<i data-lucide="${b.icon}" class="w-6 h-6 text-[#E1261C]"></i>` : `<img src="${favicon(b.url)}" class="w-6 h-6 rounded" alt="" />`;
+      const actionButtons = isConnected() ? `
+        <div class="flex gap-2">
+          <button class="text-sm text-gray-500 hover:text-[#E1261C]" data-edit="${cat.category}::${idx}"><i data-lucide="edit"></i></button>
+          <button class="text-sm text-gray-500 hover:text-[#E1261C]" data-del="${cat.category}::${idx}"><i data-lucide="trash"></i></button>
+        </div>` : '';
+      card.innerHTML = `<div class="flex items-center gap-3"><div class="card-icon">${iconHTML}</div><div><a href="${b.url}" target="_blank" class="font-medium hover:text-[#E1261C]">${b.name}</a><div class="text-xs text-gray-500">${b.url}</div></div></div>${actionButtons}`;
+      grid.appendChild(card);
     });
+    sec.appendChild(grid);
+    root.appendChild(sec);
+  });
+  // wire actions
+  document.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.onclick = (e)=>{
+      const [cat, idx] = btn.getAttribute('data-edit').split('::');
+      openEditModal(cat, parseInt(idx));
+    };
+  });
+  document.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      if(!confirm('Hapus bookmark ini?')) return;
+      const [cat, idx] = btn.getAttribute('data-del').split('::');
+      const c = store.categories.find(x=>x.category===cat);
+      c.items.splice(parseInt(idx),1);
+      await patchGist(store);
+      await loadAndRender();
+    };
+  });
 
-    loadBookmarks();
-  </script>
+  try{ lucide.createIcons(); }catch(e){}
+}
+
+/* -------- MODALS & ACTIONS -------- */
+function openEditModal(catName, idx){
+  const cat = store.categories.find(c=>c.category===catName);
+  const item = cat.items[idx];
+  $('modalTitle').innerText = 'Edit Bookmark';
+  $('bmName').value = item.name;
+  $('bmURL').value = item.url;
+  $('bmCategory').value = catName;
+  selectedIcon = item.icon || '';
+  $('iconPreview').innerHTML = selectedIcon ? `<i data-lucide="${selectedIcon}" class="w-5 h-5 text-[#E1261C]"></i>` : '';
+  editing = {catName, idx};
+  $('bookmarkModal').classList.remove('hidden');
+}
+
+function openAddModal(){
+  if(!isConnected()){ alert('Hanya pemilik token dapat menambah. Klik Connect (token).'); return; }
+  $('modalTitle').innerText = 'Tambah Bookmark';
+  $('bmName').value = '';
+  $('bmURL').value = '';
+  selectedIcon = '';
+  $('iconPreview').innerHTML = '';
+  editing = null;
+  $('bookmarkModal').classList.remove('hidden');
+}
+
+$('cancelBtn').onclick = ()=> $('bookmarkModal').classList.add('hidden');
+
+$('pickIconBtn').onclick = ()=>{
+  const g = $('iconGrid');
+  g.innerHTML = ICONS.map(ic=>`<button data-icon="${ic}" class="p-2 rounded hover:bg-gray-100 dark:hover:bg-[#222]"><i data-lucide="${ic}"></i></button>`).join('');
+  lucide.createIcons();
+  $('iconModal').classList.remove('hidden');
+  document.querySelectorAll('#iconGrid button').forEach(b=>{
+    b.onclick = ()=>{ selectedIcon = b.dataset.icon; $('iconPreview').innerHTML = `<i data-lucide="${selectedIcon}" class="w-5 h-5 text-[#E1261C]"></i>`; $('iconModal').classList.add('hidden'); lucide.createIcons(); };
+  });
+};
+$('closeIconModal').onclick = ()=> $('iconModal').classList.add('hidden');
+$('clearIconBtn').onclick = ()=> { selectedIcon=''; $('iconPreview').innerHTML = ''; };
+
+$('addBtn').onclick = openAddModal;
+$('addCatBtn').onclick = ()=>{ if(!isConnected()){ alert('Hanya pemilik token dapat mengelola kategori. Klik Connect (token).'); return; } $('newCatName').value=''; $('catModal').classList.remove('hidden'); };
+$('cancelCat').onclick = ()=> $('catModal').classList.add('hidden');
+$('saveCat').onclick = async ()=>{
+  const name = $('newCatName').value.trim(); if(!name) return alert('Nama kategori kosong');
+  if(store.categories.find(c=>c.category===name)) return alert('Kategori sudah ada');
+  store.categories.push({category:name, items:[]});
+  await patchGist(store);
+  $('catModal').classList.add('hidden');
+  await loadAndRender();
+};
+
+/* save bookmark (add or edit) */
+$('saveBtn').onclick = async ()=>{
+  const name = $('bmName').value.trim(); let url = $('bmURL').value.trim(); const catName = $('bmCategory').value || (store.categories[0] && store.categories[0].category);
+  if(!name || !url) return alert('Nama & URL wajib diisi');
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  if(!catName) return alert('Pilih kategori');
+  const cat = store.categories.find(c=>c.category===catName);
+  if(editing){
+    // edit item
+    cat.items[editing.idx] = { name, url, icon: selectedIcon || '' };
+  } else {
+    // add new
+    cat.items.push({ name, url, icon: selectedIcon || '' });
+  }
+  // auto-sync (patch gist)
+  const res = await patchGist(store);
+  if(!res.ok) alert('Gagal menyimpan ke Gist: '+(res.reason||'unknown'));
+  $('bookmarkModal').classList.add('hidden');
+  await loadAndRender();
+};
+
+/* search */
+$('searchInput').addEventListener('input', ()=> {
+  const q = $('searchInput').value.trim().toLowerCase();
+  // simple filter by hiding non-matching categories/items
+  document.querySelectorAll('#categoriesRoot section').forEach(sec=>{
+    const text = sec.innerText.toLowerCase();
+    sec.style.display = text.includes(q) ? '' : 'none';
+  });
+});
+$('clearSearchBtn').onclick = ()=> { $('searchInput').value=''; renderCategories(); };
+
+/* connect / disconnect */
+$('connectBtn').onclick = async ()=>{
+  const token = prompt('Masukkan GitHub Personal Access Token (scope: gist):');
+  if(!token) return;
+  // quick test: try GET gist with token to see if PATCH allowed
+  try{
+    // store token locally first, but validate by trying to PATCH a copy (PATCH may be blocked if token lacks gist)
+    localStorage.setItem(TOKEN_KEY, token);
+    // show connected UI
+    setButtonsForConnection();
+    // Try to patch a small no-op update: re-write same content (if file exists)
+    const payload = await fetchGist();
+    if(!payload){
+      // create basic structure and push
+      const basic = { categories: [ { category: 'General', items: [] } ] };
+      const r = await patchGist(basic);
+      if(!r.ok){ alert('Token invalid atau gagal menulis ke Gist. Hapus token dan coba lagi.'); localStorage.removeItem(TOKEN_KEY); return; }
+    } else {
+      // try patching same content back (no-op) to verify write permission
+      const r = await patchGist(payload);
+      if(!r.ok){ alert('Token tidak memiliki izin menulis ke Gist ini. Periksa scope token (butuh gist).'); localStorage.removeItem(TOKEN_KEY); return; }
+    }
+    alert('Terhubung dan dapat menulis ke Gist.');
+    $('connectBtn').classList.add('hidden'); $('disconnectBtn').classList.remove('hidden');
+    await loadAndRender();
+  }catch(err){
+    console.error(err); localStorage.removeItem(TOKEN_KEY); alert('Gagal terhubung: '+err.message);
+  }
+};
+
+$('disconnectBtn').onclick = ()=>{
+  if(confirm('Hapus token dari browser?')){ localStorage.removeItem(TOKEN_KEY); $('disconnectBtn').classList.add('hidden'); $('connectBtn').classList.remove('hidden'); setButtonsForConnection(); loadAndRender(); alert('Token dihapus lokal.'); }
+};
+
+/* load and render helper */
+async function loadAndRender(){
+  const gist = await fetchGist();
+  if(gist && gist.categories) store = gist;
+  else {
+    const cached = localStorage.getItem(LOCAL_KEY);
+    if(cached) store = JSON.parse(cached);
+    else store = { categories: [ { category: 'General', items: [] } ] };
+  }
+  // ensure categories present in select
+  const select = $('bmCategory');
+  select.innerHTML = '';
+  store.categories.forEach(c => {
+    const o = document.createElement('option'); o.value = c.category; o.text = c.category; select.appendChild(o);
+  });
+  // persist local cache
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(store));
+  setButtonsForConnection();
+  renderCategories();
+}
+
+/* theme handling */
+(function(){
+  const saved = localStorage.getItem('interco_theme') || 'light';
+  if(saved === 'dark'){ document.documentElement.classList.add('dark'); $('themeKnob').style.transform='translateX(22px)'; }
+  $('themeSwitch').onclick = () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    $('themeKnob').style.transform = isDark ? 'translateX(22px)' : 'translateX(0)';
+    localStorage.setItem('interco_theme', isDark ? 'dark' : 'light');
+  };
+})();
+
+/* init */
+(async ()=>{
+  // initial UI
+  setButtonsForConnection();
+  // if token exists, show disconnect
+  if(localStorage.getItem(TOKEN_KEY)){ $('connectBtn').classList.add('hidden'); $('disconnectBtn').classList.remove('hidden'); }
+
+  // first load
+  await loadAndRender();
+})();
+</script>
 </body>
 </html>
