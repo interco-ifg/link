@@ -1,429 +1,166 @@
-<!doctype html>
-<html lang="id">
+<!DOCTYPE html>
+<html lang="id" class="light">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Interco — Bookmark Manager (Gist Sync)</title>
-  <meta name="description" content="Interco bookmark manager — sync to public GitHub Gist. IFG corporate style, Lucide icons, dark & light mode."/>
-  <!-- Font + Tailwind CDN -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interco Corporate Bookmark Manager</title>
+  <link rel="icon" href="https://www.ifg.id/images/ifg/icon-ifg.png" type="image/png" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide -->
   <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-[#181818] dark:text-gray-100 transition-colors duration-300">
+  <header class="sticky top-0 z-50 flex items-center justify-between bg-white/80 dark:bg-[#202020]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 px-4 py-2">
+    <div class="flex items-center space-x-3">
+      <img src="https://www.ifg.id/images/ifg/serong-red.png" alt="Interco Logo" class="h-10" />
+      <h1 class="text-xl font-semibold text-[#E1261C]">Interco Bookmarks</h1>
+    </div>
+    <div class="flex items-center space-x-4">
+      <button id="connectGist" class="px-4 py-2 bg-[#E1261C] text-white rounded-lg hover:bg-[#FF4A3D] transition">Connect to Gist</button>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="themeToggle" class="sr-only peer" />
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-[#E1261C]"></div>
+      </label>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-4">
+    <section id="bookmarkList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"></section>
+
+    <div class="mt-6 flex justify-center">
+      <button id="addBookmarkBtn" class="px-6 py-3 bg-[#E1261C] text-white font-medium rounded-xl shadow hover:bg-[#FF4A3D] transition">Tambah Bookmark</button>
+    </div>
+  </main>
+
+  <!-- Modal Tambah Bookmark -->
+  <div id="bookmarkModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-[#2A2A2A] rounded-xl shadow-lg w-96 p-6">
+      <h2 class="text-lg font-semibold mb-3">Tambah Bookmark</h2>
+      <input id="bookmarkName" type="text" placeholder="Nama Bookmark" class="w-full mb-2 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600" />
+      <input id="bookmarkURL" type="text" placeholder="URL (https://...)" class="w-full mb-2 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600" />
+      <select id="bookmarkCategory" class="w-full mb-3 p-2 border border-gray-300 rounded dark:bg-[#1E1E1E] dark:border-gray-600">
+        <option value="default">Tanpa Kategori</option>
+      </select>
+      <button id="iconPickerBtn" class="w-full mb-3 py-2 bg-gray-100 dark:bg-[#333] rounded hover:bg-gray-200 dark:hover:bg-[#444] transition">Pilih Icon</button>
+      <div class="flex justify-end space-x-2">
+        <button id="cancelBookmark" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-[#333]">Batal</button>
+        <button id="saveBookmark" class="px-4 py-2 bg-[#E1261C] text-white rounded hover:bg-[#FF4A3D]">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Icon Picker -->
+  <div id="iconPickerModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-[#2A2A2A] rounded-xl shadow-lg w-96 p-6 max-h-[80vh] overflow-y-auto">
+      <h2 class="text-lg font-semibold mb-3">Pilih Icon</h2>
+      <div id="iconGrid" class="grid grid-cols-6 gap-3 text-gray-700 dark:text-gray-100"></div>
+      <div class="flex justify-end mt-4">
+        <button id="closeIconPicker" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-[#333]">Tutup</button>
+      </div>
+    </div>
+  </div>
 
   <script>
-    // Tailwind config — enable dark mode via class
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            ifg: { DEFAULT: '#E1261C', light: '#FF4A3D', soft: '#FDEBEA' },
-            bg: '#F5F5F5', border: '#E0E0E0', textPrimary: '#212121', textMuted: '#616161'
-          },
-          borderRadius: { 'xl': '16px' },
-          boxShadow: { 'soft': '0 8px 24px rgba(18,24,30,0.06)' }
-        }
+    const gistId = 'a7846be2c114200a8612ca8a86411d16';
+    const apiBase = `https://api.github.com/gists/${gistId}`;
+    let bookmarks = [];
+    let selectedIcon = null;
+
+    const icons = ["globe", "briefcase", "mail", "phone", "monitor", "book", "calendar", "camera", "chart", "heart", "link", "code", "settings", "star", "folder", "database", "map", "music", "shopping-bag", "shield", "layers", "file-text", "users", "home"];
+
+    const loadBookmarks = async () => {
+      try {
+        const res = await fetch(apiBase);
+        const data = await res.json();
+        const file = data.files['interco-bookmarks.json'];
+        if (file && file.content) bookmarks = JSON.parse(file.content);
+        renderBookmarks();
+      } catch (e) {
+        console.error('Gagal memuat data:', e);
       }
-    }
-  </script>
+    };
 
-  <style>
-    :root { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-    .match-highlight { background: linear-gradient(90deg, rgba(225,38,28,0.06), rgba(225,38,28,0.02)); border-left: 3px solid rgba(225,38,28,0.08); }
-    .lucide-btn:hover { background: rgba(0,0,0,0.03); }
-    /* small smooth toggle transition */
-    .toggle-knob { transition: transform .18s ease; }
-  </style>
-</head>
+    const saveBookmarks = async () => {
+      const token = localStorage.getItem('github_token');
+      if (!token) return alert('Hubungkan GitHub terlebih dahulu untuk menyimpan.');
+      await fetch(apiBase, {
+        method: 'PATCH',
+        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: { 'interco-bookmarks.json': { content: JSON.stringify(bookmarks, null, 2) } } })
+      });
+    };
 
-<body class="bg-bg text-textPrimary min-h-screen antialiased">
-  <div class="max-w-6xl mx-auto p-6 lg:p-10">
-    <!-- Header -->
-    <header class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
-      <div class="flex items-center gap-4">
-        <div id="logo" class="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-ifg to-ifg-light text-white font-extrabold text-lg shadow-soft">IC</div>
-        <div>
-          <h1 class="text-2xl lg:text-3xl font-extrabold">Interco — Bookmark Manager</h1>
-          <p class="text-textMuted text-sm mt-0.5">IFG corporate palette • Public Gist sync • Lucide icons</p>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3 w-full lg:w-auto">
-        <!-- Toggle (switch) -->
-        <div class="flex items-center gap-2 bg-white border border-border rounded-full px-3 py-1 shadow-soft">
-          <span class="text-sm text-textMuted mr-2">Mode</span>
-          <button id="themeSwitch" aria-label="Toggle theme" class="relative w-14 h-7 bg-slate-200 rounded-full p-1">
-            <span id="themeKnob" class="absolute left-1 top-1 w-5 h-5 rounded-full bg-white shadow toggle-knob"></span>
-          </button>
-        </div>
-
-        <!-- Connect -->
-        <div class="flex items-center gap-2">
-          <button id="connectBtn" class="bg-white border border-border rounded-xl px-3 py-2 text-sm hover:shadow-md">Connect (token)</button>
-          <button id="disconnectBtn" class="hidden bg-white border border-border rounded-xl px-3 py-2 text-sm hover:shadow-md">Disconnect</button>
-        </div>
-
-        <div class="text-xs text-textMuted px-3 py-2 rounded-xl bg-white border border-border">
-          Gist: <strong id="gistIdDisplay">a7846be2c114200a8612ca8a86411d16</strong>
-        </div>
-      </div>
-    </header>
-
-    <!-- Controls -->
-    <section class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-6">
-      <div class="flex items-center gap-3 bg-white border border-border rounded-xl px-3 py-2 shadow-soft w-full lg:w-2/3">
-        <svg class="w-5 h-5 text-textMuted" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <input id="q" type="search" placeholder="Cari bookmark..." class="bg-transparent outline-none text-sm w-72 lg:w-96" />
-        <button id="clearSearch" title="Bersihkan" class="text-textMuted">✕</button>
-      </div>
-
-      <div class="flex gap-2 ml-auto">
-        <label for="importFile" class="flex items-center gap-2 bg-white border border-border rounded-xl px-3 py-2 text-sm cursor-pointer hover:shadow-md">Import</label>
-        <input id="importFile" type="file" accept="application/json" class="hidden" />
-        <button id="exportBtn" class="bg-white border border-border rounded-xl px-3 py-2 text-sm hover:shadow-md">Export</button>
-        <button id="accentToggle" class="bg-ifg text-white rounded-xl px-3 py-2 text-sm hover:bg-ifg-light">Accent</button>
-      </div>
-    </section>
-
-    <section class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-6">
-      <div class="flex items-center gap-3 bg-white border border-border rounded-xl px-3 py-2 shadow-soft w-full lg:w-2/3">
-        <select id="categoryFilter" class="bg-transparent outline-none text-sm text-textPrimary"><option value="">Semua Kategori</option></select>
-        <button id="addCategoryBtn" class="ml-auto bg-white border border-border text-sm rounded-lg px-3 py-2 hover:shadow-md">+ Kategori</button>
-      </div>
-      <div class="flex gap-3 ml-auto">
-        <button id="clearAllBtn" class="bg-white border border-border rounded-xl px-4 py-2 text-sm hover:shadow-md">Clear All</button>
-        <button id="addBtn" class="bg-ifg text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-ifg-light">+ Tambah Bookmark</button>
-      </div>
-    </section>
-
-    <main>
-      <div id="grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
-      <div id="empty" class="hidden mt-8 p-8 bg-white border border-border rounded-xl text-center text-textMuted">Belum ada bookmark — klik <strong>Tambah Bookmark</strong> untuk memulai.</div>
-    </main>
-
-    <footer class="mt-8 text-sm text-textMuted text-center">Simpan sebagai <code>index.html</code> & deploy. Public Gist: <code>a7846be2c114200a8612ca8a86411d16</code></footer>
-  </div>
-
-  <!-- Modals -->
-  <div id="modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl w-full max-w-lg p-6 shadow-xl border border-border">
-      <h3 class="text-lg font-semibold mb-3">Tambah / Edit Bookmark</h3>
-      <div class="grid gap-3">
-        <div>
-          <label class="text-sm text-textMuted">Nama</label>
-          <input id="bm-title" class="mt-1 w-full rounded-lg border border-border px-3 py-2" placeholder="Contoh: YouTube" />
-        </div>
-        <div>
-          <label class="text-sm text-textMuted">URL</label>
-          <input id="bm-url" class="mt-1 w-full rounded-lg border border-border px-3 py-2" placeholder="https://example.com" />
-        </div>
-
-        <div>
-          <label class="text-sm text-textMuted mb-1">Pilih Icon</label>
-          <div class="flex gap-2 items-center">
-            <button id="pickIconBtn" class="px-3 py-2 rounded-lg border border-border text-sm">Pilih Icon</button>
-            <div id="selectedIconPreview" class="ml-2"></div>
-            <button id="clearIconBtn" class="ml-2 px-2 py-1 rounded border border-border text-xs">Hapus Icon</button>
+    const renderBookmarks = () => {
+      const list = document.getElementById('bookmarkList');
+      list.innerHTML = bookmarks.map(b => `
+        <div class='bg-white dark:bg-[#2A2A2A] rounded-xl shadow p-4 flex items-center justify-between transition hover:shadow-lg'>
+          <div class='flex items-center space-x-3'>
+            <i data-lucide="${b.icon || 'link'}"></i>
+            <a href='${b.url}' target='_blank' class='font-medium hover:text-[#E1261C]'>${b.name}</a>
           </div>
-        </div>
+          <button onclick='deleteBookmark("${b.url}")' class='text-gray-400 hover:text-[#E1261C] transition'><i data-lucide="trash"></i></button>
+        </div>`).join('');
+      lucide.createIcons();
+    };
 
-        <div>
-          <label class="text-sm text-textMuted">Kategori</label>
-          <select id="bm-category" class="mt-1 w-full rounded-lg border border-border px-3 py-2"></select>
-        </div>
+    const deleteBookmark = (url) => {
+      bookmarks = bookmarks.filter(b => b.url !== url);
+      saveBookmarks();
+      renderBookmarks();
+    };
 
-        <div class="flex justify-end gap-2 mt-2">
-          <button id="cancelBtn" class="bg-white border border-border rounded-lg px-4 py-2 text-sm hover:shadow-md">Batal</button>
-          <button id="saveBtn" class="bg-ifg text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-ifg-light">Simpan</button>
-        </div>
-      </div>
-    </div>
-  </div>
+    document.getElementById('addBookmarkBtn').onclick = () => document.getElementById('bookmarkModal').classList.remove('hidden');
+    document.getElementById('cancelBookmark').onclick = () => document.getElementById('bookmarkModal').classList.add('hidden');
 
-  <div id="iconPicker" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-60">
-    <div class="bg-white rounded-xl w-full max-w-2xl p-5 shadow-xl border border-border">
-      <h4 class="font-semibold mb-3">Pilih Icon</h4>
-      <div id="iconGrid" class="grid grid-cols-6 gap-3"></div>
-      <div class="flex justify-end mt-4"><button id="closeIconPicker" class="px-3 py-2 rounded-lg border border-border">Tutup</button></div>
-    </div>
-  </div>
+    document.getElementById('saveBookmark').onclick = () => {
+      const name = document.getElementById('bookmarkName').value.trim();
+      const url = document.getElementById('bookmarkURL').value.trim();
+      if (!name || !url) return alert('Nama dan URL wajib diisi.');
+      bookmarks.push({ name, url, icon: selectedIcon });
+      saveBookmarks();
+      renderBookmarks();
+      document.getElementById('bookmarkModal').classList.add('hidden');
+    };
 
-  <div id="catModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-40">
-    <div class="bg-white rounded-xl w-full max-w-md p-5 shadow-xl border border-border">
-      <h4 class="text-lg font-semibold mb-3">Buat Kategori Baru</h4>
-      <input id="newCatName" class="w-full rounded-lg border border-border px-3 py-2 mb-3" placeholder="Nama kategori, mis. Work, Social" />
-      <div class="flex justify-end gap-2"><button id="catCancel" class="bg-white border border-border rounded-lg px-3 py-2 text-sm">Batal</button><button id="catSave" class="bg-ifg text-white rounded-lg px-3 py-2 text-sm font-semibold">Simpan</button></div>
-    </div>
-  </div>
+    document.getElementById('iconPickerBtn').onclick = () => {
+      const modal = document.getElementById('iconPickerModal');
+      const grid = document.getElementById('iconGrid');
+      grid.innerHTML = icons.map(i => `<button data-icon='${i}' class='p-2 rounded hover:bg-gray-200 dark:hover:bg-[#333]'><i data-lucide='${i}'></i></button>`).join('');
+      lucide.createIcons();
+      modal.classList.remove('hidden');
+      grid.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => {
+          selectedIcon = btn.getAttribute('data-icon');
+          modal.classList.add('hidden');
+        };
+      });
+    };
+    document.getElementById('closeIconPicker').onclick = () => document.getElementById('iconPickerModal').classList.add('hidden');
 
-  <div id="tokenModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-70">
-    <div class="bg-white rounded-xl w-full max-w-md p-5 shadow-xl border border-border">
-      <h4 class="text-lg font-semibold mb-3">Masukkan GitHub Personal Access Token (scope: gist)</h4>
-      <input id="tokenInput" class="w-full rounded-lg border border-border px-3 py-2 mb-3" placeholder="ghp_xxx..." />
-      <p class="text-xs text-textMuted mb-3">Token disimpan lokal di browsermu. Jangan bagikan token ini ke orang lain.</p>
-      <div class="flex justify-end gap-2"><button id="tokenCancel" class="bg-white border border-border rounded-lg px-3 py-2">Batal</button><button id="tokenSave" class="bg-ifg text-white rounded-lg px-3 py-2 font-semibold">Simpan & Aktifkan</button></div>
-    </div>
-  </div>
+    document.getElementById('connectGist').onclick = () => {
+      const token = prompt('Masukkan GitHub Personal Access Token (scope: gist):');
+      if (token) {
+        localStorage.setItem('github_token', token);
+        alert('Terhubung ke GitHub! Sekarang Anda dapat menyimpan perubahan.');
+      }
+    };
 
-<script>
-/* ====== Config ====== */
-const GIST_ID = 'a7846be2c114200a8612ca8a86411d16';
-const GIST_FILENAME = 'interco-bookmarks.json';
-const LOCAL_KEY = 'interco_bookmarks_ifg_gist_public_v1';
-const TOKEN_KEY = 'interco_gist_token_v1';
-const THEME_KEY = 'interco_theme_v1';
-const DEFAULT_CATS = ['General'];
-const DEFAULT_BMS = [
-  {title:'Google', url:'https://www.google.com', category:'General', icon: ''},
-  {title:'YouTube', url:'https://www.youtube.com', category:'General', icon: ''}
-];
-
-const ICONS = ['globe','briefcase','mail','phone','monitor','book','calendar','camera','chart-bar','heart','link','code','settings','star','folder','database','map','music','shopping-bag','shield','layers','file-text','users','home'];
-
-const $ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
-
-let bookmarks = [];
-let categories = [];
-let editIndex = -1;
-let token = localStorage.getItem(TOKEN_KEY) || '';
-
-/* ====== Helpers ====== */
-function saveLocal() { const payload = {bookmarks,categories}; localStorage.setItem(LOCAL_KEY, JSON.stringify(payload)); }
-function loadLocal(){ try{ const raw = localStorage.getItem(LOCAL_KEY); return raw ? JSON.parse(raw) : null; }catch{ return null; } }
-function faviconFor(url){ try{ const u = new URL(url); return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`; }catch{ return ''; }}
-
-/* ====== Gist API ====== */
-async function fetchGist(){
-  try{
-    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-    if(!res.ok) throw new Error('fetch gist failed ' + res.status);
-    const data = await res.json();
-    if(data.files && data.files[GIST_FILENAME] && data.files[GIST_FILENAME].content){
-      return JSON.parse(data.files[GIST_FILENAME].content);
+    const themeToggle = document.getElementById('themeToggle');
+    const currentTheme = localStorage.getItem('theme');
+    if (currentTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      themeToggle.checked = true;
     }
-    return null;
-  }catch(e){ console.warn(e); return null; }
-}
-
-async function updateGistRemote(payload){
-  if(!token) return {ok:false, reason:'no_token'};
-  try{
-    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: 'token ' + token,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(payload, null, 2) } } })
+    themeToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
     });
-    if(!res.ok){ const txt = await res.text(); return {ok:false, reason: txt}; }
-    return {ok:true};
-  }catch(e){ return {ok:false, reason: e.message}; }
-}
 
-/* ====== Render ====== */
-const grid = $('#grid'), emptyEl = $('#empty'), q = $('#q'), categoryFilter = $('#categoryFilter');
-
-function renderCategories(){
-  categoryFilter.innerHTML = '<option value="">Semua Kategori</option>';
-  categories.forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=c; categoryFilter.appendChild(o); });
-  const bmCat = $('#bm-category'); if(bmCat){ bmCat.innerHTML=''; categories.forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=c; bmCat.appendChild(o); }); }
-}
-
-function renderGrid(filter=''){
-  grid.innerHTML='';
-  const qv = (filter||'').trim().toLowerCase();
-  const activeCat = categoryFilter.value;
-  const shown = bookmarks.filter(b=>{
-    const inCat = activeCat ? b.category === activeCat : true;
-    const inText = (b.title + ' ' + b.url).toLowerCase().includes(qv);
-    return inCat && inText;
-  });
-  if(shown.length===0) emptyEl.classList.remove('hidden'); else emptyEl.classList.add('hidden');
-
-  shown.forEach(b=>{
-    const card = document.createElement('article');
-    card.className='group relative flex items-start gap-4 bg-white border border-border rounded-xl p-4 shadow-soft transition-transform duration-200 hover:-translate-y-1';
-
-    const iconWrap = document.createElement('div'); iconWrap.className='w-14 h-14 rounded-lg bg-bg flex items-center justify-center shrink-0 overflow-hidden';
-    if(b.icon){
-      const ico = document.createElement('i'); ico.setAttribute('data-lucide', b.icon); ico.className='lucide-icon w-8 h-8 text-ifg';
-      iconWrap.appendChild(ico);
-    } else {
-      const img = document.createElement('img'); img.src = faviconFor(b.url); img.alt='favicon'; img.className='w-10 h-10';
-      img.onerror = ()=>{ img.style.display='none'; iconWrap.textContent = (b.title||'?').slice(0,1); iconWrap.classList.add('text-xl','font-semibold'); }
-      iconWrap.appendChild(img);
-    }
-
-    const meta = document.createElement('div'); meta.className='flex-1 min-w-0';
-    const title = document.createElement('a'); title.href=b.url; title.target='_blank'; title.rel='noopener noreferrer'; title.className='block font-semibold truncate text-textPrimary'; title.textContent = b.title;
-    const urlEl = document.createElement('div'); urlEl.className='text-sm text-textMuted truncate'; urlEl.textContent = b.url;
-    const cat = document.createElement('div'); cat.className='inline-block mt-2 text-xs px-2 py-1 rounded-full bg-bg text-textMuted border border-border'; cat.textContent = b.category || 'General';
-    meta.appendChild(title); meta.appendChild(urlEl); meta.appendChild(cat);
-
-    const actions = document.createElement('div'); actions.className='flex flex-col gap-2 items-end';
-    const btnRow = document.createElement('div'); btnRow.className='flex gap-2';
-    const openBtn = document.createElement('a'); openBtn.className='px-3 py-2 rounded-lg bg-ifg text-white text-sm hover:bg-ifg-light'; openBtn.href=b.url; openBtn.target='_blank'; openBtn.textContent='Open';
-    const edit = document.createElement('button'); edit.className='px-3 py-2 rounded-lg border border-border text-sm'; edit.textContent='Edit';
-    const del = document.createElement('button'); del.className='px-3 py-2 rounded-lg border border-border text-sm text-rose-600'; del.textContent='Hapus';
-
-    edit.onclick = ()=> openModal(bookmarks.indexOf(b));
-    del.onclick = ()=> { if(confirm('Hapus bookmark ini?')) { fadeOutAndRemove(card, ()=>{ bookmarks.splice(bookmarks.indexOf(b),1); saveAndMaybeSync(); renderGrid(q.value); }); } };
-
-    btnRow.appendChild(openBtn); btnRow.appendChild(edit); btnRow.appendChild(del);
-    actions.appendChild(btnRow);
-
-    card.appendChild(iconWrap); card.appendChild(meta); card.appendChild(actions);
-    if(q.value && (b.title + ' ' + b.url).toLowerCase().includes(q.value.toLowerCase())) card.classList.add('match-highlight');
-    grid.appendChild(card);
-  });
-
-  try{ lucide.createIcons(); }catch(e){}
-}
-
-/* ====== Modals & Icon Picker ====== */
-const modal = $('#modal'), bmTitle = $('#bm-title'), bmUrl = $('#bm-url'), bmCategory = $('#bm-category'), pickIconBtn = $('#pickIconBtn'), selectedIconPreview = $('#selectedIconPreview'), clearIconBtn = $('#clearIconBtn');
-const iconPicker = $('#iconPicker'), iconGrid = $('#iconGrid'), closeIconPicker = $('#closeIconPicker');
-
-function openModal(i=-1){
-  editIndex = i;
-  if(i>=0){ const b = bookmarks[i]; bmTitle.value=b.title; bmUrl.value=b.url; bmCategory.value=b.category||categories[0]; setSelectedIcon(b.icon||''); }
-  else { bmTitle.value=''; bmUrl.value=''; bmCategory.value = categories[0] || 'General'; setSelectedIcon(''); }
-  modal.classList.remove('hidden'); bmTitle.focus();
-}
-function closeModal(){ modal.classList.add('hidden'); }
-
-function setSelectedIcon(name){
-  selectedIconPreview.innerHTML=''; selectedIconPreview.dataset.icon = name || '';
-  if(name){ const el = document.createElement('i'); el.setAttribute('data-lucide', name); el.className='lucide-icon w-6 h-6 text-ifg'; selectedIconPreview.appendChild(el); try{ lucide.createIcons(); }catch(e){} }
-}
-pickIconBtn.onclick = ()=> { populateIconGrid(); iconPicker.classList.remove('hidden'); }
-clearIconBtn.onclick = ()=> setSelectedIcon('');
-closeIconPicker.onclick = ()=> iconPicker.classList.add('hidden');
-
-function populateIconGrid(){
-  iconGrid.innerHTML='';
-  ICONS.forEach(ic=>{
-    const b = document.createElement('button'); b.className='p-3 rounded-md border border-border lucide-btn flex items-center justify-center'; b.title=ic; b.dataset.icon=ic;
-    const iEl = document.createElement('i'); iEl.setAttribute('data-lucide', ic); iEl.className='lucide-icon w-6 h-6';
-    b.appendChild(iEl);
-    b.onclick = ()=> { setSelectedIcon(ic); iconPicker.classList.add('hidden'); };
-    iconGrid.appendChild(b);
-  });
-  try{ lucide.createIcons(); }catch(e){}
-}
-
-/* ====== Save flow ====== */
-$('#saveBtn').onclick = async ()=>{
-  const t = bmTitle.value.trim(); let u = bmUrl.value.trim(); const c = bmCategory.value || 'General'; const icon = selectedIconPreview.dataset.icon || '';
-  if(!t||!u){ alert('Isi nama dan URL'); return; }
-  if(!/^https?:\/\//i.test(u)) u = 'https://' + u;
-  if(editIndex>=0){ bookmarks[editIndex] = {...bookmarks[editIndex], title: t, url: u, category: c, icon}; }
-  else { bookmarks.unshift({title:t, url:u, category:c, icon}); }
-  await saveAndMaybeSync();
-  renderCategories(); renderGrid('');
-  closeModal();
-};
-$('#cancelBtn').onclick = ()=> closeModal();
-
-/* ====== Categories ====== */
-$('#addCategoryBtn').onclick = ()=> { $('#newCatName').value=''; $('#catModal').classList.remove('hidden'); $('#newCatName').focus(); };
-$('#catCancel').onclick = ()=> $('#catModal').classList.add('hidden');
-$('#catSave').onclick = ()=> { const name = $('#newCatName').value.trim(); if(!name){ alert('Isi nama kategori'); return; } if(!categories.includes(name)){ categories.push(name); saveAndMaybeSync(); renderCategories(); } $('#catModal').classList.add('hidden'); };
-
-/* ====== Import/Export/Search ====== */
-$('#exportBtn').onclick = ()=> { const payload = {bookmarks,categories}; const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='interco-bookmarks.json'; a.click(); };
-$('#importFile').addEventListener('change', async (e)=>{ const f = e.target.files[0]; if(!f) return; try{ const txt = await f.text(); const parsed = JSON.parse(txt); if(Array.isArray(parsed)) bookmarks=parsed; else { if(parsed.bookmarks) bookmarks=parsed.bookmarks; if(parsed.categories) categories=Array.from(new Set([...categories,...parsed.categories])); } await saveAndMaybeSync(); renderCategories(); renderGrid(''); alert('Import berhasil.'); }catch(err){ alert('Gagal import'); } e.target.value=''; });
-q.oninput = ()=> renderGrid(q.value);
-$('#clearSearch').onclick = ()=> { q.value=''; renderGrid(''); };
-
-/* ====== Other UI ====== */
-$('#clearAllBtn').onclick = ()=> { if(confirm('Hapus semua bookmark?')){ bookmarks=[]; saveAndMaybeSync(); renderGrid(''); } };
-function fadeOutAndRemove(el, cb){ el.style.transition='opacity .28s ease, transform .28s ease'; el.style.opacity=0; el.style.transform='translateY(6px)'; setTimeout(()=>cb && cb(),320); }
-
-/* ====== Save & maybe sync ====== */
-async function saveAndMaybeSync(){
-  saveLocal();
-  if(token){
-    const payload = {bookmarks,categories};
-    const res = await updateGistRemote(payload);
-    if(!res.ok){ console.warn('Gist update failed', res.reason); /* keep local copy */ alert('Gist update gagal — cek token di Connect'); }
-    else { /* success */ console.log('Gist updated'); }
-  } else {
-    // notify user that changes are local only
-    console.log('Saved local only (no token).');
-  }
-}
-
-/* ====== Theme toggle (fixed) ====== */
-const themeSwitch = $('#themeSwitch'), themeKnob = $('#themeKnob');
-function applyTheme(isLight){
-  const html = document.documentElement;
-  if(isLight){
-    html.classList.remove('dark');
-    themeKnob.style.transform = 'translateX(0)';
-  } else {
-    html.classList.add('dark');
-    themeKnob.style.transform = 'translateX(28px)';
-  }
-  localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark');
-}
-themeSwitch.addEventListener('click', () => {
-  const cur = localStorage.getItem(THEME_KEY) || 'light';
-  applyTheme(cur === 'light' ? false : true);
-});
-// initialize theme on load
-(function(){ const saved = localStorage.getItem(THEME_KEY) || 'light'; applyTheme(saved === 'light'); })();
-
-/* ====== Connect token UI ====== */
-$('#connectBtn').onclick = ()=> { $('#tokenInput').value=''; $('#tokenModal').classList.remove('hidden'); };
-$('#tokenCancel').onclick = ()=> $('#tokenModal').classList.add('hidden');
-$('#tokenSave').onclick = ()=> {
-  const v = $('#tokenInput').value.trim();
-  if(!v){ alert('Masukkan token'); return; }
-  token = v; localStorage.setItem(TOKEN_KEY, token);
-  $('#tokenModal').classList.add('hidden'); $('#connectBtn').classList.add('hidden'); $('#disconnectBtn').classList.remove('hidden');
-  alert('Token disimpan lokal. Perubahan akan di-push ke Gist jika valid.');
-  // try immediate sync
-  saveAndMaybeSync();
-};
-$('#disconnectBtn').onclick = ()=> { if(confirm('Hapus token dari browser?')){ token=''; localStorage.removeItem(TOKEN_KEY); $('#disconnectBtn').classList.add('hidden'); $('#connectBtn').classList.remove('hidden'); alert('Token dihapus lokal.'); } };
-
-/* ====== Init: load data (Gist -> local -> defaults) ====== */
-async function initialize(){
-  // try fetch gist public
-  const gistData = await fetchGist();
-  if(gistData && gistData.bookmarks){
-    bookmarks = gistData.bookmarks;
-    categories = gistData.categories || DEFAULT_CATS.slice();
-    console.log('Loaded from gist.');
-  } else {
-    const local = loadLocal();
-    if(local && local.bookmarks){
-      bookmarks = local.bookmarks; categories = local.categories || DEFAULT_CATS.slice();
-      console.log('Loaded from local storage.');
-    } else {
-      bookmarks = DEFAULT_BMS.slice(); categories = DEFAULT_CATS.slice();
-      await saveAndMaybeSync(); // will only push if token exists
-    }
-  }
-
-  // UI connect state
-  if(localStorage.getItem(TOKEN_KEY)){ $('#connectBtn').classList.add('hidden'); $('#disconnectBtn').classList.remove('hidden'); token = localStorage.getItem(TOKEN_KEY); }
-
-  populateIconGrid();
-  renderCategories();
-  renderGrid('');
-}
-initialize();
-
-/* ====== close modal on backdrop click ====== */
-$('#modal').addEventListener('click', e => { if(e.target === $('#modal')) closeModal(); });
-$('#iconPicker').addEventListener('click', e => { if(e.target === $('#iconPicker')) iconPicker.classList.add('hidden'); });
-$('#catModal').addEventListener('click', e => { if(e.target === $('#catModal')) $('#catModal').classList.add('hidden'); });
-</script>
+    loadBookmarks();
+  </script>
 </body>
 </html>
