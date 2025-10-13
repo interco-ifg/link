@@ -328,7 +328,7 @@ async function loadAndRender(){
 
 /* theme handling */
 (function(){
-  const saved = localStorage.getItem('interco_theme') || 'light';
+  const saved = 'light';//localStorage.getItem('interco_theme') || 
   if(saved === 'dark'){ document.documentElement.classList.add('dark'); $('themeKnob').style.transform='translateX(22px)'; }
   $('themeSwitch').onclick = () => {
     const isDark = document.documentElement.classList.toggle('dark');
