@@ -161,7 +161,19 @@ function renderCategories(){
           <button class="text-sm text-gray-500 hover:text-[#E1261C]" data-edit="${cat.category}::${idx}"><i data-lucide="edit"></i></button>
           <button class="text-sm text-gray-500 hover:text-[#E1261C]" data-del="${cat.category}::${idx}"><i data-lucide="trash"></i></button>
         </div>` : '';
-      card.innerHTML = `<div class="flex items-center gap-3"><div class="card-icon">${iconHTML}</div><div><a href="${b.url}" target="_blank" class="font-medium hover:text-[#E1261C]">${b.name}</a><div class="text-xs text-gray-500">${b.url}</div></div></div>${actionButtons}`;
+     //card.innerHTML = `<div class="flex items-center gap-3"><div class="card-icon">${iconHTML}</div><div><a href="${b.url}" target="_blank" class="font-medium hover:text-[#E1261C]">${b.name}</a><div class="text-xs text-gray-500">${b.url}</div></div></div>${actionButtons}`;
+      // Extract domain from URL
+function getDomain(url) {
+  try {
+    const domain = new URL(url).hostname;
+    // Remove www. if present
+    return domain.replace(/^www\./, '');
+  } catch {
+    return url; // fallback to original if URL parsing fails
+  }
+}
+
+card.innerHTML = `<div class="flex items-center gap-3"><div class="card-icon">${iconHTML}</div><div><a href="${b.url}" target="_blank" class="font-medium hover:text-[#E1261C]">${b.name}</a><div class="text-xs text-gray-500">${getDomain(b.url)}</div></div></div>${actionButtons}`;
       grid.appendChild(card);
     });
     sec.appendChild(grid);
